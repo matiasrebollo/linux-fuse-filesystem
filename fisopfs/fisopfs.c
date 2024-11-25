@@ -9,41 +9,34 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include "fs.h"
 
 #define DEFAULT_FILE_DISK "persistence_file.fisopfs"
 
-#define MAX_FILE_NAME 256
-#define MAX_FILES 128
-#define MAX_PATH 1024
-
-typedef struct archivo {
-	char nombre[MAX_FILE_NAME];
-	size_t tamanio;
-	void *data;
-	time_t fecha_creacion;
-	time_t fecha_modificacion;
-} archivo_t;
-
-// por ahora lo cree asi. No es un directorio flat porque un directorio puede tener subdirectorios, despues podemos cambiarlo para que sea un UNICO nivel de recursion.
-// se podria agregar un struct subdirectorio para los subdirectorios dentro del directorio raiz, y dejar struct directorio unicamente para el directorio raiz.
-typedef struct directorio {
-	char nombre[MAX_FILE_NAME];
-	struct directorio *padre;
-	struct directorio *subdirectorios[MAX_FILES];
-	archivo_t *archivos[MAX_FILES];
-	size_t cant_archivos;
-	size_t cant_directorios;
-	time_t fecha_creacion;
-	time_t fecha_modificacion;
-} directorio_t;
-
-typedef struct filesystem {
-	directorio_t *raiz;
-	size_t max_size;
-	size_t current_size;
-} filesystem_t;
-
 char *filedisk = DEFAULT_FILE_DISK;
+
+void *
+fisopfs_init(struct fuse_conn_info *conn)
+{
+	printf("[DEBUG] Inicializando filesystem.\n");
+	filesystem_t *fs = fs_init();
+	if (!fs) {
+		fprintf(stderr, "[ERROR] No se pudo inicializar el filesystem.\n");
+		return NULL;
+	}
+	printf("[DEBUG] Filesystem inicializado correctamente.\n");
+	return fs;
+}
+
+void
+fisopfs_destroy(void *private_data)
+{
+	printf("[DEBUG] Destruyendo filesystem.\n");
+	if (private_data) {
+		fs_destroy((filesystem_t *) private_data);
+	}
+	printf("[DEBUG] Filesystem destruido correctamente.\n");
+}
 
 static int
 fisopfs_getattr(const char *path, struct stat *st)
@@ -121,6 +114,8 @@ static struct fuse_operations operations = {
 	.getattr = fisopfs_getattr,
 	.readdir = fisopfs_readdir,
 	.read = fisopfs_read,
+	.init = fisopfs_init,
+	.destroy = fisopfs_destroy,
 };
 
 int
