@@ -33,7 +33,7 @@ fisopfs_destroy(void *private_data)
 {
 	printf("[DEBUG] Destruyendo filesystem.\n");
 	if (private_data) {
-		fs_destroy((filesystem_t *) private_data);
+		fs_destroy((filesystem_t *) private_data, filedisk);
 	}
 	printf("[DEBUG] Filesystem destruido correctamente.\n");
 }
