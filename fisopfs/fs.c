@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <time.h>
 
+//PUEDE FALTAR MODULARIZAR LOS DEBUGS.
+
 void
 liberar_archivos(archivo_t **archivos, size_t cant_archivos)
 {
