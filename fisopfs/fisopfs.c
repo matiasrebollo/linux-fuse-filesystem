@@ -14,12 +14,13 @@
 #define DEFAULT_FILE_DISK "persistence_file.fisopfs"
 
 char *filedisk = DEFAULT_FILE_DISK;
+filesystem_t *fs = NULL;
 
 void *
 fisopfs_init(struct fuse_conn_info *conn)
 {
 	printf("[DEBUG] Inicializando filesystem.\n");
-	filesystem_t *fs = fs_init();
+	fs = fs_init();
 	if (!fs) {
 		fprintf(stderr, "[ERROR] No se pudo inicializar el filesystem.\n");
 		return NULL;
@@ -29,11 +30,11 @@ fisopfs_init(struct fuse_conn_info *conn)
 }
 
 void
-fisopfs_destroy(void *private_data)
+fisopfs_destroy()
 {
 	printf("[DEBUG] Destruyendo filesystem.\n");
-	if (private_data) {
-		fs_destroy((filesystem_t *) private_data, filedisk);
+	if (fs) {
+		fs_destroy(fs, filedisk);
 	}
 	printf("[DEBUG] Filesystem destruido correctamente.\n");
 }
