@@ -111,12 +111,39 @@ fisopfs_read(const char *path,
 	return size;
 }
 
+static int
+fisopfs_mkdir(const char *path, mode_t mode)
+{
+	printf("[debug] fisopfs_mkdir - path: %s\n", path);
+
+	int res = fs_mkdir(fs, path);
+	if (res == 0) {
+		printf("[debug] Directorio creado con éxito\n");
+	}
+
+	return res;
+}
+
+static int
+fisopfs_rmdir(const char *path)
+{
+	printf("[debug] fisopfs_rmdir - path: %s\n", path);
+
+	int res = fs_rmdir(fs, path);
+	if (res == 0) {
+		printf("[debug] Directorio creado con éxito\n");
+	}
+
+	return res;
+}
+
 static struct fuse_operations operations = {
 	.getattr = fisopfs_getattr,
 	.readdir = fisopfs_readdir,
 	.read = fisopfs_read,
 	.init = fisopfs_init,
 	.destroy = fisopfs_destroy,
+	.mkdir = fisopfs_mkdir,
 };
 
 int

@@ -10,6 +10,7 @@
 
 typedef struct archivo {
 	char nombre[MAX_FILE_NAME];
+	int idx;
 	size_t tamanio;
 	void *data;
 	time_t fecha_creacion;
@@ -22,6 +23,7 @@ typedef struct archivo {
 // directorio raiz, y dejar struct directorio unicamente para el directorio raiz.
 typedef struct directorio {
 	char nombre[MAX_FILE_NAME];
+	int idx;
 	// struct directorio *padre;
 	struct directorio *subdirectorios[MAX_FILES];
 	archivo_t *archivos[MAX_FILES];
@@ -39,5 +41,8 @@ typedef struct filesystem {
 
 filesystem_t *fs_init();
 void fs_destroy(filesystem_t *fs, const char *filename);
+int fs_mkdir(filesystem_t *fs, const char *path);
+int fs_rmdir(filesystem_t *fs, const char *path);
+
 
 #endif

@@ -4,12 +4,12 @@
 #include <stdio.h>
 #include <time.h>
 
-//PUEDE FALTAR MODULARIZAR LOS DEBUGS.
+// PUEDE FALTAR MODULARIZAR LOS DEBUGS.
 
 void
 liberar_archivos(archivo_t **archivos, size_t cant_archivos)
 {
-	if (!archivos){
+	if (!archivos) {
 		return;
 	}
 	for (size_t i = 0; i < cant_archivos; i++) {
@@ -25,13 +25,13 @@ void liberar_directorio(directorio_t *dir);
 void
 liberar_subdirectorios(directorio_t *subdirectorios[], size_t cant_directorios)
 {
-	if (!subdirectorios){
+	if (!subdirectorios) {
 		return;
 	}
 	for (size_t i = 0; i < cant_directorios; i++) {
 		if (subdirectorios[i]) {
 			liberar_directorio(subdirectorios[i]);
-			//subdirectorios[i] = NULL;
+			// subdirectorios[i] = NULL;
 		}
 	}
 }
@@ -53,8 +53,9 @@ archivo_t *
 deserializar_archivo(FILE *file)
 {
 	archivo_t *archivo = malloc(sizeof(archivo_t));
-	if (!archivo){
-		fprintf(stderr, "[ERROR] Error al asignar memoria para archivo.\n");
+	if (!archivo) {
+		fprintf(stderr,
+		        "[ERROR] Error al asignar memoria para archivo.\n");
 		return NULL;
 	}
 
@@ -82,14 +83,15 @@ deserializar_archivo(FILE *file)
 
 	if (archivo->tamanio > 0) {
 		archivo->data = malloc(archivo->tamanio);
-		if (!archivo->data){
+		if (!archivo->data) {
 			fprintf(stderr, "[ERROR] Error al asignar memoria para la data del archivo.\n");
 			free(archivo);
 			return NULL;
 		}
 		if (fread(archivo->data, sizeof(char), archivo->tamanio, file) !=
 		    archivo->tamanio) {
-			fprintf(stderr, "[ERROR] Error al leer la data del archivo.\n");
+			fprintf(stderr,
+			        "[ERROR] Error al leer la data del archivo.\n");
 			free(archivo->data);
 			free(archivo);
 			return NULL;
@@ -106,13 +108,15 @@ deserializar_directorio(FILE *file)
 {
 	directorio_t *dir = malloc(sizeof(directorio_t));
 	if (!dir) {
-		fprintf(stderr, "[ERROR] Error al asignar memoria para directorio.\n");
+		fprintf(stderr,
+		        "[ERROR] Error al asignar memoria para directorio.\n");
 		return NULL;
 	}
 
 	if (fread(dir->nombre, sizeof(char), MAX_FILE_NAME, file) !=
 	    MAX_FILE_NAME) {
-		fprintf(stderr, "[ERROR] Error al leer el nombre del directorio.\n");
+		fprintf(stderr,
+		        "[ERROR] Error al leer el nombre del directorio.\n");
 		free(dir);
 		return NULL;
 	}
@@ -142,7 +146,7 @@ deserializar_directorio(FILE *file)
 
 	for (size_t i = 0; i < dir->cant_archivos; i++) {
 		dir->archivos[i] = deserializar_archivo(file);
-		if (!dir->archivos[i]){
+		if (!dir->archivos[i]) {
 			liberar_archivos(dir->archivos, i);
 			free(dir);
 			return NULL;
@@ -150,7 +154,7 @@ deserializar_directorio(FILE *file)
 	}
 	for (size_t i = 0; i < dir->cant_directorios; i++) {
 		dir->subdirectorios[i] = deserializar_directorio(file);
-		if (!dir->subdirectorios[i]){
+		if (!dir->subdirectorios[i]) {
 			liberar_archivos(dir->archivos, dir->cant_archivos);
 			liberar_subdirectorios(dir->subdirectorios, i);
 			free(dir);
@@ -166,12 +170,13 @@ cargar_fs(const char *path)
 {
 	FILE *file = fopen(path, "rb");
 	if (!file) {
-		fprintf(stderr, "[ERROR] Error al abrir el archivo para cargar.\n");
+		fprintf(stderr,
+		        "[ERROR] Error al abrir el archivo para cargar.\n");
 		return NULL;
 	}
 
 	filesystem_t *fs = malloc(sizeof(filesystem_t));
-	if (!fs){
+	if (!fs) {
 		fprintf(stderr, "[ERROR] Error al asignar memoria para el filesystem.\n");
 		fclose(file);
 		return NULL;
@@ -192,9 +197,10 @@ cargar_fs(const char *path)
 
 	fs->raiz = deserializar_directorio(file);
 	fclose(file);
-	if (!fs->raiz){
+	if (!fs->raiz) {
 		free(fs);
-		fprintf(stderr, "[ERROR] Error al crear la raiz del filesystem.\n");
+		fprintf(stderr,
+		        "[ERROR] Error al crear la raiz del filesystem.\n");
 		return NULL;
 	}
 
@@ -216,10 +222,17 @@ crear_archivo(const char *nombre, size_t tamanio)
 }*/
 
 directorio_t *
-crear_directorio(const char *nombre)
+crear_directorio(const char *nombre, int idx)
 {
 	directorio_t *dir = malloc(sizeof(directorio_t));
+	if (!dir) {
+		fprintf(stderr,
+		        "[ERROR] Error al asignar memoria para directorio.\n");
+		return NULL;
+	}
+
 	snprintf(dir->nombre, MAX_FILE_NAME, "%s", nombre);
+	dir->idx = idx;
 	dir->cant_archivos = 0;
 	dir->cant_directorios = 0;
 	dir->fecha_creacion = time(NULL);
@@ -232,14 +245,6 @@ crear_directorio(const char *nombre)
 	return dir;
 }
 
-/*void
-agregar_archivo(directorio_t *dir, archivo_t *archivo)
-{
-	if (dir->cant_archivos < MAX_FILES) {
-		dir->archivos[dir->cant_archivos] = archivo;
-		dir->cant_archivos++;
-	}
-}*/
 
 filesystem_t *
 fs_init(const char *filename)
@@ -251,21 +256,22 @@ fs_init(const char *filename)
 	if (file) {
 		fs = cargar_fs(filename);
 		fclose(file);
-		if (!fs){
+		if (!fs) {
 			fprintf(stderr, "[ERROR] Error al cargar el filesystem desde el archivo.\n");
 			return NULL;
 		}
-		printf("[DEBUG] Sistema de archivos cargado desde el archivo.\n");
+		printf("[DEBUG] Sistema de archivos cargado desde el "
+		       "archivo.\n");
 	} else {
 		fs = malloc(sizeof(filesystem_t));
-		if (!fs){
+		if (!fs) {
 			fprintf(stderr, "[ERROR] Error al asignar memoria para el filesystem.\n");
 			return NULL;
 		}
 		fs->max_size = 1024 * 1024 * 1024;
 		fs->current_size = 0;
-		fs->raiz = crear_directorio("/");
-		if (!fs->raiz){
+		fs->raiz = crear_directorio("/", 0);
+		if (!fs->raiz) {
 			free(fs);
 			fprintf(stderr, "[ERROR] Error al crear la raiz del filesystem.\n");
 			return NULL;
@@ -276,16 +282,130 @@ fs_init(const char *filename)
 	return fs;
 }
 
+const char *
+obtener_nombre_dir(const char *path)
+{
+	if (!path) {
+		fprintf(stderr,
+		        "[ERROR] Error al obtener el nombre del directorio\n");
+		return NULL;
+	}
+
+	// Considera path con y sin '/' inicial
+	const char *nombre_dir = path;
+	if (path[0] == '/') {
+		nombre_dir++;
+	}
+
+	if (strlen(nombre_dir) < 1) {
+		fprintf(stderr, "[ERROR] Ruta del directorio inválida\n");
+		return NULL;
+	}
+
+	return nombre_dir;
+}
+
+int
+fs_mkdir(filesystem_t *fs, const char *path)
+{
+	const char *nombre_dir = obtener_nombre_dir(path);
+	if (!nombre_dir) {
+		return -1;
+	}
+
+	for (size_t i = 0; i < fs->raiz->cant_directorios; i++) {
+		if (strcmp(fs->raiz->subdirectorios[i]->nombre, nombre_dir) == 0) {
+			fprintf(stderr,
+			        "[ERROR] Ya existe un directorio con este "
+			        "nombre en este directorio\n");
+			return -1;
+		}
+	}
+
+	directorio_t *nuevo_dir =
+	        crear_directorio(nombre_dir, fs->raiz->cant_directorios);
+	if (!nuevo_dir) {
+		fprintf(stderr, "[ERROR] Error al crear el directorio\n");
+		return -1;
+	}
+
+	fs->raiz->subdirectorios[fs->raiz->cant_directorios] = nuevo_dir;
+	fs->raiz->cant_directorios++;
+	fs->raiz->fecha_modificacion = time(NULL);
+
+	return 0;
+}
+
+
+directorio_t *
+obtener_directorio(directorio_t *dir, const char *path)
+{
+	if (!dir) {
+		fprintf(stderr, "[ERROR] Error al buscar el directorio\n");
+		return NULL;
+	}
+
+	const char *nombre_dir = obtener_nombre_dir(path);
+	if (!nombre_dir) {
+		return -1;
+	}
+
+	// Buscar en los directorios de la raíz
+	for (size_t i = 0; i < dir->cant_directorios; i++) {
+		if (strcmp(dir->subdirectorios[i]->nombre, nombre_dir) == 0) {
+			return dir->subdirectorios[i];
+		}
+	}
+
+	fprintf(stderr, "[ERROR] Directorio no encontrado\n");
+	return NULL;
+}
+
+int
+fs_rmdir(filesystem_t *fs, const char *path)
+{
+	directorio_t *dir = obtener_directorio(fs, path);
+	if (!dir) {
+		return -1;
+	}
+
+	if (dir->cant_archivos > 0 || dir->cant_directorios > 0) {
+		fprintf(stderr, "[ERROR] El directorio no está vacío\n");
+		return -1;
+	}
+
+	int idx = dir->idx;
+	fs->raiz->subdirectorios[idx] =
+	        fs->raiz->subdirectorios[fs->raiz->cant_directorios - 1];
+	fs->raiz->subdirectorios[fs->raiz->cant_directorios - 1] = NULL;
+	fs->raiz->cant_directorios--;
+
+	liberar_directorio(dir);
+
+	return 0;
+}
+
+/*void
+agregar_archivo(directorio_t *dir, archivo_t *archivo)
+{
+        if (dir->cant_archivos < MAX_FILES) {
+                dir->archivos[dir->cant_archivos] = archivo;
+                dir->cant_archivos++;
+        }
+}*/
+
 int
 serializar_archivo(FILE *file, archivo_t *archivo)
 {
 	if (fwrite(archivo->nombre, sizeof(char), MAX_FILE_NAME, file) !=
 	    MAX_FILE_NAME) {
-		fprintf(stderr, "[ERROR] Error al escribir el nombre del archivo.\n");
+		fprintf(stderr,
+		        "[ERROR] Error al escribir el nombre del archivo.\n");
 		return -1;
 	}
 	if (fwrite(&archivo->tamanio, sizeof(size_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al escribir el tamaño del archivo.\n");
+		fprintf(stderr,
+		        "[ERROR] Error al escribir el tamaño del archivo.\n");
 		return -1;
 	}
 	if (fwrite(&archivo->fecha_creacion, sizeof(time_t), 1, file) != 1) {
@@ -333,13 +453,13 @@ serializar_directorio(FILE *file, directorio_t *dir)
 	}
 
 	for (size_t i = 0; i < dir->cant_archivos; i++) {
-		if (serializar_archivo(file, dir->archivos[i]) != 0){
+		if (serializar_archivo(file, dir->archivos[i]) != 0) {
 			fprintf(stderr, "[ERROR] Error al escribir un archivo del directorio.\n");
 			return -1;
 		}
 	}
 	for (size_t i = 0; i < dir->cant_directorios; i++) {
-		if (serializar_directorio(file, dir->subdirectorios[i]) != 0){
+		if (serializar_directorio(file, dir->subdirectorios[i]) != 0) {
 			fprintf(stderr, "[ERROR] Error al escribir un subdirectorio del directorio.\n");
 			return -1;
 		}
@@ -352,22 +472,25 @@ guardar_fs(filesystem_t *fs, const char *path)
 {
 	FILE *file = fopen(path, "wb");
 	if (!file) {
-		fprintf(stderr, "[ERROR] Error al abrir el archivo para guardar.\n");
+		fprintf(stderr,
+		        "[ERROR] Error al abrir el archivo para guardar.\n");
 		return -1;
 	}
 
 	if (fwrite(&fs->max_size, sizeof(size_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al escribir el tamaño maximo del fs.\n");
+		fprintf(stderr,
+		        "[ERROR] Error al escribir el tamaño maximo del fs.\n");
 		fclose(file);
 		return -1;
 	}
 	if (fwrite(&fs->current_size, sizeof(size_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al escribir el tamaño actual del fs.\n");
+		fprintf(stderr,
+		        "[ERROR] Error al escribir el tamaño actual del fs.\n");
 		fclose(file);
 		return -1;
 	}
 
-	if (serializar_directorio(file, fs->raiz) != 0){
+	if (serializar_directorio(file, fs->raiz) != 0) {
 		fprintf(stderr, "[ERROR] Error al escribir el directorio.\n");
 		fclose(file);
 		return -1;
@@ -380,10 +503,10 @@ guardar_fs(filesystem_t *fs, const char *path)
 void
 fs_destroy(filesystem_t *fs, const char *filename)
 {
-	if(!fs){
+	if (!fs) {
 		return;
 	}
-	if (guardar_fs(fs, filename) != 0){
+	if (guardar_fs(fs, filename) != 0) {
 		fprintf(stderr, "[ERROR] Error al serializar el file system.\n");
 	}
 
