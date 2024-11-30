@@ -238,7 +238,7 @@ archivo_t *crear_archivo(filesystem_t *fs, const char *path) {
     char *dir_path = dirname(path_copy);  
     char *file_name = basename(path);    
 
-    directorio_t *dir = fs_getdir(fs, dir_path);
+    directorio_t *dir = fs_open(fs, dir_path);
     if (!dir) {
         return NULL; 
     }
@@ -250,19 +250,17 @@ archivo_t *crear_archivo(filesystem_t *fs, const char *path) {
         }
     }
 
-    // Verificar si el sistema tiene espacio para un archivo adicional
     if (fs->current_size >= fs->max_size || dir->cant_archivos >= MAX_FILES) {
         return NULL;
     }
 
-    // Crear el archivo
     archivo_t *new_file = malloc(sizeof(archivo_t));
     if (!new_file) {
         return NULL; 
     }
 
     strncpy(new_file->nombre, file_name, MAX_FILE_NAME);
-    new_file->idx = dir->cant_archivos; // Usar el índice basado en la cantidad actual de archivos
+    new_file->idx = dir->cant_archivos; 
     new_file->data = NULL;             
 
     // Inicializar estadísticas del archivo
