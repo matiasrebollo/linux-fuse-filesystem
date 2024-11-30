@@ -227,7 +227,7 @@ crear_archivo(const char *nombre, size_t tamanio)
         return archivo;
 }*/
 
-archivo_t *crear_archivo(filesystem_t *fs, const char *path) {
+archivo_t *crear_archivo(filesystem_t *fs, const char *path, mode_t mode) {
     if (!fs || !path || strlen(path) == 0 || strlen(path) >= MAX_PATH) {
         return NULL; 
     }
@@ -270,7 +270,7 @@ archivo_t *crear_archivo(filesystem_t *fs, const char *path) {
         return NULL;
     }
 
-    new_file->stats->st_mode = __S_IFREG | 0644; 
+    new_file->stats->st_mode = mode; 
     new_file->stats->st_nlink = 1;            
     new_file->stats->st_uid = getuid();       
     new_file->stats->st_gid = getgid();       

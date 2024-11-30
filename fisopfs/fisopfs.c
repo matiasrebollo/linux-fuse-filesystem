@@ -81,6 +81,9 @@ fisopfs_readdir(const char *path,
 	for(int i = 0; i< dir->cant_archivos; i++){
 		filler(buffer, dir->archivos[i]->nombre, NULL,0);
 	}
+	for(int i = 0; i< dir->cant_directorios; i++){
+		filler(buffer, dir->subdirectorios[i]->nombre, NULL,0);
+	}
 
 	return 0;
 }
@@ -144,6 +147,18 @@ static int fisopfs_write(const char *path, const char *buffer, size_t size, off_
     return size;
 }
 
+static int fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
+    if (fs == NULL) {
+        return -EFAULT; 
+    }
+
+    int ret = crear_archivo(fs, path, mode);
+    if (ret < 0) {
+        return ret; 
+    }
+
+    return 0;
+} 
 
 
 static int
@@ -164,19 +179,41 @@ static int fisopfs_opendir(const char* path, struct fuse_file_info * fi){
 	}
 	return -ENOENT;
 }
+
 static int fisopfs_mkdir(const char* path, mode_t mode){
 	return fs_mkdir(fs, path);
 }
+
+static int fisopfs_mknod(const char *path, mode_t mode, dev_t rdev) {
+    if (fs == NULL) {
+        return -EFAULT; 
+    }
+
+    if (!S_ISREG(mode)) {
+        return -EINVAL; 
+    }
+
+    int ret = crear_archivo(fs, path, mode);
+    if (ret < 0) {
+        return ret; 
+    }
+
+    return 0;
+}
+
 
 static struct fuse_operations operations = {
 	.getattr = fisopfs_getattr,
 	.readdir = fisopfs_readdir,
 	.read = fisopfs_read,
+	.write = fisopfs_write,
 	.init = fisopfs_init,
 	.destroy = fisopfs_destroy,
 	.open = fisopfs_open,
 	.mkdir = fisopfs_mkdir,
-	.opendir = fisopfs_opendir	
+	.opendir = fisopfs_opendir,
+	.create = fisopfs_create,
+	.mknod = fisopfs_mknod	
 };
 
 int
