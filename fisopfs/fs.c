@@ -3,6 +3,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <linux/stat.h>
 
 // PUEDE FALTAR MODULARIZAR LOS DEBUGS.
 
@@ -65,31 +71,31 @@ deserializar_archivo(FILE *file)
 		free(archivo);
 		return NULL;
 	}
-	if (fread(&archivo->tamanio, sizeof(size_t), 1, file) != 1) {
+	if (fread(&archivo->stats->st_size, sizeof(size_t), 1, file) != 1) {
 		fprintf(stderr, "[ERROR] Error al leer el tamaño archivo.\n");
 		free(archivo);
 		return NULL;
 	}
-	if (fread(&archivo->fecha_creacion, sizeof(time_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al leer la fecha de creacion del archivo.\n");
+	if (fread(&archivo->stats->st_atime, sizeof(time_t), 1, file) != 1) {
+		fprintf(stderr, "[ERROR] Error al leer la fecha de acceso del archivo.\n");
 		free(archivo);
 		return NULL;
 	}
-	if (fread(&archivo->fecha_modificacion, sizeof(time_t), 1, file) != 1) {
+	if (fread(&archivo->stats->st_mtime, sizeof(time_t), 1, file) != 1) {
 		fprintf(stderr, "Error al leer la fecha de modificacion del archivo.\n");
 		free(archivo);
 		return NULL;
 	}
 
-	if (archivo->tamanio > 0) {
-		archivo->data = malloc(archivo->tamanio);
+	if (archivo->stats->st_size > 0) {
+		archivo->data = malloc(archivo->stats->st_size);
 		if (!archivo->data) {
 			fprintf(stderr, "[ERROR] Error al asignar memoria para la data del archivo.\n");
 			free(archivo);
 			return NULL;
 		}
-		if (fread(archivo->data, sizeof(char), archivo->tamanio, file) !=
-		    archivo->tamanio) {
+		if (fread(archivo->data, sizeof(char), archivo->stats->st_size, file) !=
+		    archivo->stats->st_size) {
 			fprintf(stderr,
 			        "[ERROR] Error al leer la data del archivo.\n");
 			free(archivo->data);
@@ -130,12 +136,12 @@ deserializar_directorio(FILE *file)
 		free(dir);
 		return NULL;
 	}
-	if (fread(&dir->fecha_creacion, sizeof(time_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al leer la fecha de creacion del directorio.\n");
+	if (fread(&dir->stats->st_atime, sizeof(time_t), 1, file) != 1) {
+		fprintf(stderr, "[ERROR] Error al leer la fecha de acceso del directorio.\n");
 		free(dir);
 		return NULL;
 	}
-	if (fread(&dir->fecha_modificacion, sizeof(time_t), 1, file) != 1) {
+	if (fread(&dir->stats->st_mtime, sizeof(time_t), 1, file) != 1) {
 		fprintf(stderr, "[ERROR] Error al leer la fecha de modificacion del directorio.\n");
 		free(dir);
 		return NULL;
@@ -235,8 +241,14 @@ crear_directorio(const char *nombre, int idx)
 	dir->idx = idx;
 	dir->cant_archivos = 0;
 	dir->cant_directorios = 0;
-	dir->fecha_creacion = time(NULL);
-	dir->fecha_modificacion = time(NULL);
+	dir->stats = malloc(sizeof(stats_t));
+	dir->stats->st_mtime = time(NULL); //tiempo de modif
+	dir->stats->st_atime = time(NULL); //tiemo de acceso
+	dir->stats->st_gid = getgid();
+	dir->stats->st_nlink = 1;
+	dir->stats->st_mode = __S_IFDIR;
+	dir->stats->st_uid = getuid();
+	dir->stats->st_size = sizeof(directorio_t);
 
 	// inicializa los arreglos de subdirectorios y archivos como NULL
 	memset(dir->subdirectorios, 0, sizeof(dir->subdirectorios));
@@ -282,39 +294,12 @@ fs_init(const char *filename)
 	return fs;
 }
 
-const char *
-obtener_nombre_dir(const char *path)
-{
-	if (!path) {
-		fprintf(stderr,
-		        "[ERROR] Error al obtener el nombre del directorio\n");
-		return NULL;
-	}
-
-	// Considera path con y sin '/' inicial
-	const char *nombre_dir = path;
-	if (path[0] == '/') {
-		nombre_dir++;
-	}
-
-	if (strlen(nombre_dir) < 1) {
-		fprintf(stderr, "[ERROR] Ruta del directorio inválida\n");
-		return NULL;
-	}
-
-	return nombre_dir;
-}
 
 int
 fs_mkdir(filesystem_t *fs, const char *path)
 {
-	const char *nombre_dir = obtener_nombre_dir(path);
-	if (!nombre_dir) {
-		return -1;
-	}
-
 	for (size_t i = 0; i < fs->raiz->cant_directorios; i++) {
-		if (strcmp(fs->raiz->subdirectorios[i]->nombre, nombre_dir) == 0) {
+		if (strcmp(fs->raiz->subdirectorios[i]->nombre, path) == 0) {
 			fprintf(stderr,
 			        "[ERROR] Ya existe un directorio con este "
 			        "nombre en este directorio\n");
@@ -323,7 +308,7 @@ fs_mkdir(filesystem_t *fs, const char *path)
 	}
 
 	directorio_t *nuevo_dir =
-	        crear_directorio(nombre_dir, fs->raiz->cant_directorios);
+	        crear_directorio(path, fs->raiz->cant_directorios);
 	if (!nuevo_dir) {
 		fprintf(stderr, "[ERROR] Error al crear el directorio\n");
 		return -1;
@@ -331,7 +316,8 @@ fs_mkdir(filesystem_t *fs, const char *path)
 
 	fs->raiz->subdirectorios[fs->raiz->cant_directorios] = nuevo_dir;
 	fs->raiz->cant_directorios++;
-	fs->raiz->fecha_modificacion = time(NULL);
+	fs->raiz->stats->st_atime = time(NULL);
+	fs->raiz->stats->st_mtime = time(NULL);
 
 	return 0;
 }
@@ -340,31 +326,33 @@ fs_mkdir(filesystem_t *fs, const char *path)
 directorio_t *
 obtener_directorio(directorio_t *dir, const char *path)
 {
+	
 	if (!dir) {
 		fprintf(stderr, "[ERROR] Error al buscar el directorio\n");
 		return NULL;
 	}
-
-	const char *nombre_dir = obtener_nombre_dir(path);
-	if (!nombre_dir) {
-		return -1;
+	if(strcmp(dir->nombre, path)==0){
+		return dir;
 	}
-
 	// Buscar en los directorios de la raíz
 	for (size_t i = 0; i < dir->cant_directorios; i++) {
-		if (strcmp(dir->subdirectorios[i]->nombre, nombre_dir) == 0) {
+		if (strcmp(dir->subdirectorios[i]->nombre, path) == 0) {
 			return dir->subdirectorios[i];
 		}
 	}
 
-	fprintf(stderr, "[ERROR] Directorio no encontrado\n");
+	fprintf(stderr, "[ERROR] Directorio %s no encontrado\n", path);
 	return NULL;
+}
+
+directorio_t* fs_getdir(filesystem_t *fs, const char *path){
+	return obtener_directorio(fs->raiz, path);
 }
 
 int
 fs_rmdir(filesystem_t *fs, const char *path)
 {
-	directorio_t *dir = obtener_directorio(fs, path);
+	directorio_t *dir = obtener_directorio(fs->raiz, path);
 	if (!dir) {
 		return -1;
 	}
@@ -385,14 +373,6 @@ fs_rmdir(filesystem_t *fs, const char *path)
 	return 0;
 }
 
-/*void
-agregar_archivo(directorio_t *dir, archivo_t *archivo)
-{
-        if (dir->cant_archivos < MAX_FILES) {
-                dir->archivos[dir->cant_archivos] = archivo;
-                dir->cant_archivos++;
-        }
-}*/
 
 int
 serializar_archivo(FILE *file, archivo_t *archivo)
@@ -403,23 +383,23 @@ serializar_archivo(FILE *file, archivo_t *archivo)
 		        "[ERROR] Error al escribir el nombre del archivo.\n");
 		return -1;
 	}
-	if (fwrite(&archivo->tamanio, sizeof(size_t), 1, file) != 1) {
+	if (fwrite(&archivo->stats->st_size, sizeof(size_t), 1, file) != 1) {
 		fprintf(stderr,
 		        "[ERROR] Error al escribir el tamaño del archivo.\n");
 		return -1;
 	}
-	if (fwrite(&archivo->fecha_creacion, sizeof(time_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al escribir la fecha de creacion del archivo.\n");
+	if (fwrite(&archivo->stats->st_atime, sizeof(time_t), 1, file) != 1) {
+		fprintf(stderr, "[ERROR] Error al escribir la fecha de acceso del archivo.\n");
 		return -1;
 	}
-	if (fwrite(&archivo->fecha_modificacion, sizeof(time_t), 1, file) != 1) {
+	if (fwrite(&archivo->stats->st_mtime, sizeof(time_t), 1, file) != 1) {
 		fprintf(stderr, "[ERROR] Error al escribir la fecha de modificacion archivo.\n");
 		return -1;
 	}
 
-	if (archivo->data != NULL && archivo->tamanio > 0) {
-		if (fwrite(archivo->data, sizeof(char), archivo->tamanio, file) !=
-		    archivo->tamanio) {
+	if (archivo->data != NULL && archivo->stats->st_size > 0) {
+		if (fwrite(archivo->data, sizeof(char), archivo->stats->st_size, file) !=
+		    archivo->stats->st_size) {
 			fprintf(stderr, "[ERROR] Error al escribir la data del archivo.\n");
 			return -1;
 		}
@@ -443,11 +423,11 @@ serializar_directorio(FILE *file, directorio_t *dir)
 		fprintf(stderr, "[ERROR] Error al escribir la cantidad de subdirectorios del directorio.\n");
 		return -1;
 	}
-	if (fwrite(&dir->fecha_creacion, sizeof(time_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al escribir la fecha de creacion del directorio.\n");
+	if (fwrite(&dir->stats->st_atime, sizeof(time_t), 1, file) != 1) {
+		fprintf(stderr, "[ERROR] Error al escribir la fecha de acceso del directorio.\n");
 		return -1;
 	}
-	if (fwrite(&dir->fecha_modificacion, sizeof(time_t), 1, file) != 1) {
+	if (fwrite(&dir->stats->st_mtime, sizeof(time_t), 1, file) != 1) {
 		fprintf(stderr, "[ERROR] Error al escribir la fecha de modificacion del directorio.\n");
 		return -1;
 	}
@@ -514,4 +494,46 @@ fs_destroy(filesystem_t *fs, const char *filename)
 	free(fs);
 
 	printf("[DEBUG] Sistema de archivos destruido y guardado.\n");
+}
+
+archivo_t* iter_dir(directorio_t* dir, int size,const char* path){
+	for(int i = 0; i < dir->cant_archivos; i++){
+		if(strcmp(dir->archivos[i]->nombre, path) == 0){
+			return dir->archivos[i];
+		}
+	}
+	return NULL;
+}
+
+archivo_t* search_file(directorio_t* dir, const char* path){
+
+	archivo_t* f = iter_dir(dir, dir->cant_archivos, path);
+	if(f)
+		return f;
+	for(int i = 0; i < dir->cant_directorios; i++){
+		f = search_file(dir->subdirectorios[i], path);
+		if(f)
+			return f;	
+	}
+	return NULL;
+
+}
+archivo_t* fs_open(filesystem_t* fs, const char* path){
+	if(path == NULL || fs == NULL){
+		printf("[DEBUG] Nombre de archivo nulo.\n");
+		return NULL;
+	}
+
+	return search_file(fs->raiz, path);
+	
+}
+stats_t* fs_getattr(filesystem_t *fs, const char *path){
+	archivo_t* archivo = search_file(fs->raiz,path);
+	if (archivo){
+		return archivo->stats;
+	}
+	directorio_t* directorio = obtener_directorio(fs->raiz, path);
+	if(directorio)
+		return directorio->stats;
+	return NULL;
 }

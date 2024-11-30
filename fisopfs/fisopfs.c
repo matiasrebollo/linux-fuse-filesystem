@@ -14,27 +14,28 @@
 #define DEFAULT_FILE_DISK "persistence_file.fisopfs"
 
 char *filedisk = DEFAULT_FILE_DISK;
-filesystem_t *fs = NULL;
+filesystem_t* fs;
 
 void *
 fisopfs_init(struct fuse_conn_info *conn)
 {
 	printf("[DEBUG] Inicializando filesystem.\n");
-	fs = fs_init();
-	if (!fs) {
+	filesystem_t *fs_ = fs_init();
+	if (!fs_) {
 		fprintf(stderr, "[ERROR] No se pudo inicializar el filesystem.\n");
 		return NULL;
 	}
 	printf("[DEBUG] Filesystem inicializado correctamente.\n");
-	return fs;
+	fs = fs_;
+	return fs_;
 }
 
 void
-fisopfs_destroy()
+fisopfs_destroy(void *private_data)
 {
 	printf("[DEBUG] Destruyendo filesystem.\n");
-	if (fs) {
-		fs_destroy(fs, filedisk);
+	if (private_data) {
+		fs_destroy((filesystem_t *) private_data, filedisk);
 	}
 	printf("[DEBUG] Filesystem destruido correctamente.\n");
 }
@@ -43,21 +44,21 @@ static int
 fisopfs_getattr(const char *path, struct stat *st)
 {
 	printf("[debug] fisopfs_getattr - path: %s\n", path);
+	stats_t *s = fs_getattr(fs, path);
 
-	if (strcmp(path, "/") == 0) {
-		st->st_uid = 1717;
-		st->st_mode = __S_IFDIR | 0755;
-		st->st_nlink = 2;
-	} else if (strcmp(path, "/fisop") == 0) {
-		st->st_uid = 1818;
-		st->st_mode = __S_IFREG | 0644;
-		st->st_size = 2048;
-		st->st_nlink = 1;
-	} else {
+	if(!s)
 		return -ENOENT;
-	}
+	
+	st->st_atime = s->st_atime;
+	st->st_gid = s->st_gid;
+	st->st_mode = s->st_mode;
+	st->st_size = s->st_size;
+	st->st_uid = s->st_uid;
+	st->st_nlink = s->st_nlink;
+	st->st_mtime = s->st_mtime;
 
 	return 0;
+
 }
 
 static int
@@ -73,13 +74,15 @@ fisopfs_readdir(const char *path,
 	filler(buffer, ".", NULL, 0);
 	filler(buffer, "..", NULL, 0);
 
-	// Si nos preguntan por el directorio raiz, solo tenemos un archivo
-	if (strcmp(path, "/") == 0) {
-		filler(buffer, "fisop", NULL, 0);
-		return 0;
+	directorio_t* dir = (directorio_t*)fi->fh;
+	if(!dir){
+		return -ENOENT;
+	}
+	for(int i = 0; i< dir->cant_archivos; i++){
+		filler(buffer, dir->archivos[i]->nombre, NULL,0);
 	}
 
-	return -ENOENT;
+	return 0;
 }
 
 #define MAX_CONTENIDO 100
@@ -112,29 +115,25 @@ fisopfs_read(const char *path,
 }
 
 static int
-fisopfs_mkdir(const char *path, mode_t mode)
-{
-	printf("[debug] fisopfs_mkdir - path: %s\n", path);
-
-	int res = fs_mkdir(fs, path);
-	if (res == 0) {
-		printf("[debug] Directorio creado con éxito\n");
+fisopfs_open(const char * path, struct fuse_file_info * fi){
+	archivo_t* f = fs_open(fs, path);
+	if(f){
+		fi->fh = (uint64_t) f;
+		return 0;
 	}
-
-	return res;
+	return -ENOENT;
 }
 
-static int
-fisopfs_rmdir(const char *path)
-{
-	printf("[debug] fisopfs_rmdir - path: %s\n", path);
-
-	int res = fs_rmdir(fs, path);
-	if (res == 0) {
-		printf("[debug] Directorio creado con éxito\n");
+static int fisopfs_opendir(const char* path, struct fuse_file_info * fi){
+	directorio_t* d = fs_getdir(fs, path);
+	if(d){
+		fi->fh = (uint64_t) d;
+		return 0;
 	}
-
-	return res;
+	return -ENOENT;
+}
+static int fisopfs_mkdir(const char* path, mode_t mode){
+	return fs_mkdir(fs, path);
 }
 
 static struct fuse_operations operations = {
@@ -143,7 +142,9 @@ static struct fuse_operations operations = {
 	.read = fisopfs_read,
 	.init = fisopfs_init,
 	.destroy = fisopfs_destroy,
+	.open = fisopfs_open,
 	.mkdir = fisopfs_mkdir,
+	.opendir = fisopfs_opendir	
 };
 
 int
