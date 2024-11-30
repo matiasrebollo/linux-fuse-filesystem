@@ -75,12 +75,10 @@ fisopfs_readdir(const char *path,
 	filler(buffer, "..", NULL, 0);
 
 	directorio_t* dir = (directorio_t*)fi->fh;
-	if(!dir){
-		return -ENOENT;
-	}
-	for(int i = 0; i< dir->cant_archivos; i++){
+	
+	/*for(int i = 0; i< dir->cant_archivos; i++){
 		filler(buffer, dir->archivos[i]->nombre, NULL,0);
-	}
+	}*/
 	for(int i = 0; i< dir->cant_directorios; i++){
 		filler(buffer, dir->subdirectorios[i]->nombre, NULL,0);
 	}
@@ -88,8 +86,6 @@ fisopfs_readdir(const char *path,
 	return 0;
 }
 
-#define MAX_CONTENIDO 100
-static char fisop_file_contenidos[MAX_CONTENIDO] = "hola fisopfs!\n";
 
 static int fisopfs_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
     if (!fs) {
@@ -148,14 +144,17 @@ static int fisopfs_write(const char *path, const char *buffer, size_t size, off_
 }
 
 static int fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
+	printf("[debug] fisopfs_create %s ", path);
     if (fs == NULL) {
         return -EFAULT; 
     }
 
-    int ret = fs_create(fs, path, mode);
-    if (ret < 0) {
-        return ret; 
+    archivo_t* f = crear_archivo(fs, path, mode);
+    if (f == NULL) {
+        return -ENOENT; 
     }
+
+	fi->fh = (uint64_t)f;
 
     return 0;
 } 
@@ -163,6 +162,7 @@ static int fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *
 
 static int
 fisopfs_open(const char * path, struct fuse_file_info * fi){
+	printf("[debug] fisopfs_open %s", path);
 	archivo_t* f = fs_open(fs, path);
 	if(f){
 		fi->fh = (uint64_t) f;
@@ -172,6 +172,7 @@ fisopfs_open(const char * path, struct fuse_file_info * fi){
 }
 
 static int fisopfs_opendir(const char* path, struct fuse_file_info * fi){
+	printf("[debug] fisopfs_opendir %s", path);
 	directorio_t* d = fs_getdir(fs, path);
 	if(d){
 		fi->fh = (uint64_t) d;
@@ -181,10 +182,12 @@ static int fisopfs_opendir(const char* path, struct fuse_file_info * fi){
 }
 
 static int fisopfs_mkdir(const char* path, mode_t mode){
+	printf("[debug] fisopfs_mkdir %s", path);
 	return fs_mkdir(fs, path);
 }
 
 static int fisopfs_mknod(const char *path, mode_t mode, dev_t rdev) {
+	printf("[debug] fisopfs_mknod %s", path);
     if (fs == NULL) {
         return -EFAULT; 
     }
@@ -193,9 +196,9 @@ static int fisopfs_mknod(const char *path, mode_t mode, dev_t rdev) {
         return -EINVAL; 
     }
 
-    int ret = fs_create(fs, path, mode);
-    if (ret < 0) {
-        return ret; 
+    archivo_t* a = crear_archivo(fs, path, mode);
+    if (!a ) {
+        return -ECANCELED; 
     }
 
     return 0;

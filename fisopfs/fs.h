@@ -22,7 +22,7 @@ typedef struct stats{
 }stats_t;
 
 typedef struct archivo {
-	char nombre[MAX_FILE_NAME];
+	char *nombre;
 	int idx;
 	void *data;
 	stats_t* stats;
@@ -33,7 +33,7 @@ typedef struct archivo {
 // se podria agregar un struct subdirectorio para los subdirectorios dentro del
 // directorio raiz, y dejar struct directorio unicamente para el directorio raiz.
 typedef struct directorio {
-	char nombre[MAX_FILE_NAME];
+	char *nombre;
 	int idx;
 	struct directorio *subdirectorios[MAX_FILES];
 	archivo_t *archivos[MAX_FILES];

@@ -297,8 +297,7 @@ crear_directorio(const char *nombre, int idx)
 		        "[ERROR] Error al asignar memoria para directorio.\n");
 		return NULL;
 	}
-
-	snprintf(dir->nombre, MAX_FILE_NAME, "%s", nombre);
+	strncpy(dir->nombre,nombre, MAX_FILE_NAME);
 	dir->idx = idx;
 	dir->cant_archivos = 0;
 	dir->cant_directorios = 0;
@@ -362,7 +361,7 @@ fs_mkdir(filesystem_t *fs, const char *path)
 	for (size_t i = 0; i < fs->raiz->cant_directorios; i++) {
 		if (strcmp(fs->raiz->subdirectorios[i]->nombre, path) == 0) {
 			fprintf(stderr,
-			        "[ERROR] Ya existe un directorio con este "
+			        "[ERROR] Ya existe un subdirectorio con este "
 			        "nombre en este directorio\n");
 			return -1;
 		}
@@ -384,27 +383,7 @@ fs_mkdir(filesystem_t *fs, const char *path)
 }
 
 
-directorio_t *
-obtener_directorio(directorio_t *dir, const char *path)
-{
-	
-	if (!dir) {
-		fprintf(stderr, "[ERROR] Error al buscar el directorio\n");
-		return NULL;
-	}
-	if(strcmp(dir->nombre, path)==0){
-		return dir;
-	}
-	// Buscar en los directorios de la raíz
-	for (size_t i = 0; i < dir->cant_directorios; i++) {
-		if (strcmp(dir->subdirectorios[i]->nombre, path) == 0) {
-			return dir->subdirectorios[i];
-		}
-	}
 
-	fprintf(stderr, "[ERROR] Directorio %s no encontrado\n", path);
-	return NULL;
-}
 
 directorio_t* fs_getdir(filesystem_t *fs, const char *path){
 	return obtener_directorio(fs->raiz, path);
