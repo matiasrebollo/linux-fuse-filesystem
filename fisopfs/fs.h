@@ -55,6 +55,6 @@ int fs_rmdir(filesystem_t *fs, const char *path);
 archivo_t* fs_open(filesystem_t *fs, const char *path);
 stats_t* fs_getattr(filesystem_t *fs, const char *path);
 directorio_t* fs_getdir(filesystem_t *fs, const char *path);
-archivo_t *crear_archivo(filesystem_t *fs, const char *path, mode_t mode);
+int fs_create(filesystem_t *fs, const char *path, mode_t mode);
 
 #endif

@@ -213,79 +213,79 @@ cargar_fs(const char *path)
 	return fs;
 }
 
-/*
 archivo_t *
-crear_archivo(const char *nombre, size_t tamanio)
+crear_archivo(const char *nombre, int idx, mode_t mode)
 {
-        archivo_t *archivo = malloc(sizeof(archivo_t));
-        strncpy(archivo->nombre, nombre, MAX_FILE_NAME);
-        archivo->tamanio = tamanio;
-        archivo->data = malloc(tamanio);
-        memset(archivo->data, 0, tamanio);  // De prueba
-        archivo->fecha_creacion = time(NULL);
-        archivo->fecha_modificacion = time(NULL);
-        return archivo;
-}*/
+    archivo_t *file = malloc(sizeof(archivo_t));
+    if (!file) {
+        fprintf(stderr,
+                "[ERROR] Error al asignar memoria para archivo.\n");
+        return NULL;
+    }
 
-archivo_t *crear_archivo(filesystem_t *fs, const char *path, mode_t mode) {
+    // Configurar los campos básicos del archivo
+    snprintf(file->nombre, MAX_FILE_NAME, "%s", nombre);
+    file->idx = idx;
+    file->data = NULL;
+
+    // Inicializar estadísticas del archivo
+    file->stats = malloc(sizeof(stats_t));
+    if (!file->stats) {
+        fprintf(stderr,
+                "[ERROR] Error al asignar memoria para estadísticas.\n");
+        free(file);
+        return NULL;
+    }
+
+    file->stats->st_mode = mode;           // Tipo y permisos del archivo
+    file->stats->st_nlink = 1;             // Número de enlaces
+    file->stats->st_uid = getuid();        // UID del usuario actual
+    file->stats->st_gid = getgid();        // GID del usuario actual
+    file->stats->st_size = 0;              // Tamaño inicial
+    file->stats->st_atime = time(NULL);    // Último acceso
+    file->stats->st_mtime = time(NULL);    // Última modificación
+
+    return file;
+}
+
+int
+fs_create(filesystem_t *fs, const char *path, mode_t mode)
+{
     if (!fs || !path || strlen(path) == 0 || strlen(path) >= MAX_PATH) {
-        return NULL; 
+        fprintf(stderr, "[ERROR] Path inválido o sistema no inicializado.\n");
+        return -1;
     }
 
-    // Separar el path para obtener directorio y nombre del archivo
-    char path_copy[MAX_PATH];
-    strncpy(path_copy, path, MAX_PATH);
-    char *dir_path = dirname(path_copy);  
-    char *file_name = basename(path);    
-
-    directorio_t *dir = fs_open(fs, dir_path);
-    if (!dir) {
-        return NULL; 
-    }
-
-    // Verificar que no exista un archivo o directorio con el mismo nombre
-    for (size_t i = 0; i < dir->cant_archivos; i++) {
-        if (strcmp(dir->archivos[i]->nombre, file_name) == 0) {
-            return NULL;
+    // Verificar si ya existe un archivo con el mismo nombre en la raíz
+    for (size_t i = 0; i < fs->raiz->cant_archivos; i++) {
+        if (strcmp(fs->raiz->archivos[i]->nombre, path) == 0) {
+            fprintf(stderr,
+                    "[ERROR] Ya existe un archivo con este nombre en este directorio.\n");
+            return -1;
         }
     }
 
-    if (fs->current_size >= fs->max_size || dir->cant_archivos >= MAX_FILES) {
-        return NULL;
+    // Crear el archivo
+    archivo_t *nuevo_archivo =
+        crear_archivo(path, fs->raiz->cant_archivos, mode);
+    if (!nuevo_archivo) {
+        fprintf(stderr, "[ERROR] Error al crear el archivo.\n");
+        return -1;
     }
 
-    archivo_t *new_file = malloc(sizeof(archivo_t));
-    if (!new_file) {
-        return NULL; 
-    }
+    // Agregar el archivo al directorio raíz
+    fs->raiz->archivos[fs->raiz->cant_archivos] = nuevo_archivo;
+    fs->raiz->cant_archivos++;
+    fs->raiz->stats->st_atime = time(NULL);
+    fs->raiz->stats->st_mtime = time(NULL);
 
-    strncpy(new_file->nombre, file_name, MAX_FILE_NAME);
-    new_file->idx = dir->cant_archivos; 
-    new_file->data = NULL;             
-
-    // Inicializar estadísticas del archivo
-    new_file->stats = malloc(sizeof(stats_t));
-    if (!new_file->stats) {
-        free(new_file);
-        return NULL;
-    }
-
-    new_file->stats->st_mode = mode; 
-    new_file->stats->st_nlink = 1;            
-    new_file->stats->st_uid = getuid();       
-    new_file->stats->st_gid = getgid();       
-    new_file->stats->st_size = 0;             
-    new_file->stats->st_atime = time(NULL);
-    new_file->stats->st_mtime = time(NULL);
-
-    // Agregar el archivo al directorio
-    dir->archivos[dir->cant_archivos] = new_file;
-    dir->cant_archivos++;
-
+    // Incrementar el tamaño actual del filesystem
     fs->current_size++;
 
-    return new_file; 
+    return 0;
 }
+
+
 
 
 directorio_t *

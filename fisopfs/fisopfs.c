@@ -152,7 +152,7 @@ static int fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *
         return -EFAULT; 
     }
 
-    int ret = crear_archivo(fs, path, mode);
+    int ret = fs_create(fs, path, mode);
     if (ret < 0) {
         return ret; 
     }
@@ -193,13 +193,33 @@ static int fisopfs_mknod(const char *path, mode_t mode, dev_t rdev) {
         return -EINVAL; 
     }
 
-    int ret = crear_archivo(fs, path, mode);
+    int ret = fs_create(fs, path, mode);
     if (ret < 0) {
         return ret; 
     }
 
     return 0;
 }
+
+static int fisopfs_utimens(const char *path, const struct timespec ts[2]) {
+    archivo_t *archivo = fs_open(fs, path);
+    if (!archivo) {
+        fprintf(stderr, "[ERROR] No se encontró el archivo para actualizar tiempos: %s\n", path);
+        return -ENOENT; 
+    }
+
+    if (ts) {
+        archivo->stats->st_atime = ts[0].tv_sec; 
+        archivo->stats->st_mtime = ts[1].tv_sec; 
+    } else {
+        time_t now = time(NULL);
+        archivo->stats->st_atime = now;
+        archivo->stats->st_mtime = now;
+    }
+
+    return 0; 
+}
+
 
 
 static struct fuse_operations operations = {
@@ -213,7 +233,8 @@ static struct fuse_operations operations = {
 	.mkdir = fisopfs_mkdir,
 	.opendir = fisopfs_opendir,
 	.create = fisopfs_create,
-	.mknod = fisopfs_mknod	
+	.mknod = fisopfs_mknod,
+	.utimens = fisopfs_utimens
 };
 
 int
