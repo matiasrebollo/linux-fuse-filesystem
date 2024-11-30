@@ -56,5 +56,4 @@ archivo_t* fs_open(filesystem_t *fs, const char *path);
 stats_t* fs_getattr(filesystem_t *fs, const char *path);
 directorio_t* fs_getdir(filesystem_t *fs, const char *path);
 
-
 #endif

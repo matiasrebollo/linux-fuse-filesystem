@@ -88,31 +88,63 @@ fisopfs_readdir(const char *path,
 #define MAX_CONTENIDO 100
 static char fisop_file_contenidos[MAX_CONTENIDO] = "hola fisopfs!\n";
 
-static int
-fisopfs_read(const char *path,
-             char *buffer,
-             size_t size,
-             off_t offset,
-             struct fuse_file_info *fi)
-{
-	printf("[debug] fisopfs_read - path: %s, offset: %lu, size: %lu\n",
-	       path,
-	       offset,
-	       size);
+static int fisopfs_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
+    if (!fs) {
+        return -ENOENT;  
+    }
 
-	// Solo tenemos un archivo hardcodeado!
-	if (strcmp(path, "/fisop") != 0)
-		return -ENOENT;
+    archivo_t *file = fs_open(fs,path);
+    if (!file) {
+        return -ENOENT; 
+    }
 
-	if (offset + size > strlen(fisop_file_contenidos))
-		size = strlen(fisop_file_contenidos) - offset;
+	printf("[debug] fisopfs_read - path: %s, offset: %li, size: %lu\n",path,offset,size);
 
-	size = size > 0 ? size : 0;
+    if (offset >= file->stats->st_size) {
+        return 0;
+    }
 
-	memcpy(buffer, fisop_file_contenidos + offset, size);
+    size_t bytes_to_read = size;
+    if (offset + size > file->stats->st_size) {
+        bytes_to_read = file->stats->st_size - offset;  
+    }
 
-	return size;
+    memcpy(buffer, (char *)file->data + offset, bytes_to_read);
+
+    return bytes_to_read;
 }
+
+static int fisopfs_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
+    if (!fs) {
+        return -ENOENT;  
+    }
+
+    archivo_t *file = fs_open(fs, path); 
+    if (!file) {
+        return -ENOENT; 
+    }
+
+    if (offset > file->stats->st_size) {
+        return -EINVAL;  
+    }
+
+    if (offset + size > file->stats->st_size) {
+        size_t new_size = offset + size;
+        file->data = realloc(file->data, new_size);  
+        if (!file->data) {
+            return -ENOMEM; 
+        }
+        file->stats->st_size = new_size; 
+    }
+
+    memcpy((char *)file->data + offset, buffer, size);
+
+    file->stats->st_mtime = time(NULL); 
+
+    return size;
+}
+
+
 
 static int
 fisopfs_open(const char * path, struct fuse_file_info * fi){
