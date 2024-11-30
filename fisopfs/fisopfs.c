@@ -89,7 +89,6 @@ fisopfs_readdir(const char *path,
 }
 
 #define MAX_CONTENIDO 100
-static char fisop_file_contenidos[MAX_CONTENIDO] = "hola fisopfs!\n";
 
 static int fisopfs_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
     if (!fs) {
