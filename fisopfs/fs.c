@@ -37,6 +37,7 @@ liberar_archivos(archivo_t **archivos, size_t cant_archivos)
 	for (size_t i = 0; i < cant_archivos; i++) {
 		if (archivos[i]) {
 			free(archivos[i]->data);
+			free(archivos[i]->data);
 			free(archivos[i]);
 		}
 	}
@@ -53,7 +54,6 @@ liberar_subdirectorios(directorio_t *subdirectorios[], size_t cant_directorios)
 	for (size_t i = 0; i < cant_directorios; i++) {
 		if (subdirectorios[i]) {
 			liberar_directorio(subdirectorios[i]);
-			// subdirectorios[i] = NULL;
 		}
 	}
 }
@@ -68,6 +68,7 @@ liberar_directorio(directorio_t *dir)
 	liberar_archivos(dir->archivos, dir->cant_archivos);
 	liberar_subdirectorios(dir->subdirectorios, dir->cant_directorios);
 
+	free(dir->stats);
 	free(dir);
 }
 
@@ -87,26 +88,39 @@ deserializar_archivo(FILE *file)
 		free(archivo);
 		return NULL;
 	}
-	if (fread(&archivo->stats->st_size, sizeof(size_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al leer el tamaño archivo.\n");
-		free(archivo);
-		return NULL;
-	}
-	if (fread(&archivo->stats->st_atime, sizeof(time_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al leer la fecha de acceso del archivo.\n");
-		free(archivo);
-		return NULL;
-	}
-	if (fread(&archivo->stats->st_mtime, sizeof(time_t), 1, file) != 1) {
-		fprintf(stderr, "Error al leer la fecha de modificacion del archivo.\n");
+	if (fread(&archivo->idx, sizeof(int), 1, file) != 1) {
+		fprintf(stderr, "[ERROR] Error al leer el índice del archivo.\n");
 		free(archivo);
 		return NULL;
 	}
 
+	// Deserializa los stats
+	archivo->stats = malloc(
+	        sizeof(stats_t));  // Asegurarse de que 'stats' sea asignado
+	if (!archivo->stats) {
+		fprintf(stderr, "[ERROR] Error al asignar memoria para los stats del archivo.\n");
+		free(archivo);
+		return NULL;
+	}
+	if (fread(&archivo->stats->st_mode, sizeof(mode_t), 1, file) != 1 ||
+	    fread(&archivo->stats->st_nlink, sizeof(nlink_t), 1, file) != 1 ||
+	    fread(&archivo->stats->st_uid, sizeof(uid_t), 1, file) != 1 ||
+	    fread(&archivo->stats->st_gid, sizeof(gid_t), 1, file) != 1 ||
+	    fread(&archivo->stats->st_size, sizeof(off_t), 1, file) != 1 ||
+	    fread(&archivo->stats->st_atime, sizeof(time_t), 1, file) != 1 ||
+	    fread(&archivo->stats->st_mtime, sizeof(time_t), 1, file) != 1) {
+		fprintf(stderr, "[ERROR] Error al leer los stats del archivo.\n");
+		free(archivo->stats);
+		free(archivo);
+		return NULL;
+	}
+
+	// Si el archivo tiene datos, leer su contenido
 	if (archivo->stats->st_size > 0) {
 		archivo->data = malloc(archivo->stats->st_size);
 		if (!archivo->data) {
 			fprintf(stderr, "[ERROR] Error al asignar memoria para la data del archivo.\n");
+			free(archivo->stats);
 			free(archivo);
 			return NULL;
 		}
@@ -115,6 +129,7 @@ deserializar_archivo(FILE *file)
 			fprintf(stderr,
 			        "[ERROR] Error al leer la data del archivo.\n");
 			free(archivo->data);
+			free(archivo->stats);
 			free(archivo);
 			return NULL;
 		}
@@ -142,6 +157,12 @@ deserializar_directorio(FILE *file)
 		free(dir);
 		return NULL;
 	}
+	if (fread(&dir->idx, sizeof(int), 1, file) != 1) {
+		fprintf(stderr,
+		        "[ERROR] Error al leer el índice del directorio.\n");
+		free(dir);
+		return NULL;
+	}
 	if (fread(&dir->cant_archivos, sizeof(size_t), 1, file) != 1) {
 		fprintf(stderr, "[ERROR] Error al leer la cantidad de archivos del directorio.\n");
 		free(dir);
@@ -152,13 +173,24 @@ deserializar_directorio(FILE *file)
 		free(dir);
 		return NULL;
 	}
-	if (fread(&dir->stats->st_atime, sizeof(time_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al leer la fecha de acceso del directorio.\n");
+
+	// Deserializa los stats del directorio
+	dir->stats = malloc(sizeof(stats_t));
+	if (!dir->stats) {
+		fprintf(stderr, "[ERROR] Error al asignar memoria para los stats del directorio.\n");
 		free(dir);
 		return NULL;
 	}
-	if (fread(&dir->stats->st_mtime, sizeof(time_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al leer la fecha de modificacion del directorio.\n");
+	if (fread(&dir->stats->st_mode, sizeof(mode_t), 1, file) != 1 ||
+	    fread(&dir->stats->st_nlink, sizeof(nlink_t), 1, file) != 1 ||
+	    fread(&dir->stats->st_uid, sizeof(uid_t), 1, file) != 1 ||
+	    fread(&dir->stats->st_gid, sizeof(gid_t), 1, file) != 1 ||
+	    fread(&dir->stats->st_size, sizeof(off_t), 1, file) != 1 ||
+	    fread(&dir->stats->st_atime, sizeof(time_t), 1, file) != 1 ||
+	    fread(&dir->stats->st_mtime, sizeof(time_t), 1, file) != 1) {
+		fprintf(stderr,
+		        "[ERROR] Error al leer los stats del directorio.\n");
+		free(dir->stats);
 		free(dir);
 		return NULL;
 	}
@@ -170,6 +202,7 @@ deserializar_directorio(FILE *file)
 		dir->archivos[i] = deserializar_archivo(file);
 		if (!dir->archivos[i]) {
 			liberar_archivos(dir->archivos, i);
+			free(dir->stats);
 			free(dir);
 			return NULL;
 		}
@@ -179,6 +212,7 @@ deserializar_directorio(FILE *file)
 		if (!dir->subdirectorios[i]) {
 			liberar_archivos(dir->archivos, dir->cant_archivos);
 			liberar_subdirectorios(dir->subdirectorios, i);
+			free(dir->stats);
 			free(dir);
 			return NULL;
 		}
@@ -204,6 +238,8 @@ cargar_fs(const char *path)
 		return NULL;
 	}
 
+	fs->raiz = NULL;
+
 	if (fread(&fs->max_size, sizeof(size_t), 1, file) != 1) {
 		fprintf(stderr, "[ERROR] Error al leer el tamaño maximo del filesystem.\n");
 		fclose(file);
@@ -214,6 +250,13 @@ cargar_fs(const char *path)
 		fprintf(stderr, "[ERROR] Error al leer el tamaño actual del filesystem.\n");
 		fclose(file);
 		free(fs);
+		return NULL;
+	}
+
+	if (fs->max_size < fs->current_size) {
+		fprintf(stderr, "[ERROR] Archivo inválido: 'current_size' es mayor que 'max_size'.\n");
+		free(fs);
+		fclose(file);
 		return NULL;
 	}
 
@@ -347,6 +390,11 @@ crear_directorio(const char *path, int idx)
 	dir->cant_archivos = 0;
 	dir->cant_directorios = 0;
 	dir->stats = malloc(sizeof(stats_t));
+	if (!dir->stats) {
+		fprintf(stderr, "[ERROR] Error al asignar memoria para las stats del directorio.\n");
+		free(dir);
+		return NULL;
+	}
 	dir->stats->st_mtime = time(NULL);  // tiempo de modif
 	dir->stats->st_atime = time(NULL);  // tiemo de acceso
 	dir->stats->st_gid = getgid();
@@ -371,15 +419,17 @@ fs_init(const char *filename)
 	// Intentar cargar el fs desde el archivo
 	FILE *file = fopen(filename, "rb");
 	if (file) {
-		fs = cargar_fs(filename);
 		fclose(file);
+		fs = cargar_fs(filename);
 		if (!fs) {
-			fprintf(stderr, "[ERROR] Error al cargar el filesystem desde el archivo.\n");
+			fprintf(stderr, "[ERROR] Error al cargar el sistema de archivos desde el archivo.\n");
 			return NULL;
 		}
-		printf("[DEBUG] Sistema de archivos cargado desde el "
-		       "archivo.\n");
+		printf("[DEBUG] Sistema de archivos cargado desde '%s'.\n",
+		       filename);
 	} else {
+		printf("[DEBUG] Archivo no encontrado o carga fallida. Creando "
+		       "nuevo sistema de archivos.\n");
 		fs = malloc(sizeof(filesystem_t));
 		if (!fs) {
 			fprintf(stderr, "[ERROR] Error al asignar memoria para el filesystem.\n");
@@ -389,8 +439,8 @@ fs_init(const char *filename)
 		fs->current_size = 0;
 		fs->raiz = crear_directorio("/", 0);
 		if (!fs->raiz) {
-			free(fs);
 			fprintf(stderr, "[ERROR] Error al crear la raiz del filesystem.\n");
+			free(fs);
 			return NULL;
 		}
 		printf("[DEBUG] Nuevo sistema de archivos creado.\n");
@@ -508,20 +558,31 @@ serializar_archivo(FILE *file, archivo_t *archivo)
 		        "[ERROR] Error al escribir el nombre del archivo.\n");
 		return -1;
 	}
-	if (fwrite(&archivo->stats->st_size, sizeof(size_t), 1, file) != 1) {
+	if (fwrite(&archivo->idx, sizeof(int), 1, file) != 1) {
 		fprintf(stderr,
-		        "[ERROR] Error al escribir el tamaño del archivo.\n");
-		return -1;
-	}
-	if (fwrite(&archivo->stats->st_atime, sizeof(time_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al escribir la fecha de acceso del archivo.\n");
-		return -1;
-	}
-	if (fwrite(&archivo->stats->st_mtime, sizeof(time_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al escribir la fecha de modificacion archivo.\n");
+		        "[ERROR] Error al escribir el index del archivo.\n");
 		return -1;
 	}
 
+	// Serializa los campos de stats_t
+	if (fwrite(archivo->stats, sizeof(stats_t), 1, file) != 1) {
+		fprintf(stderr,
+		        "[ERROR] Error al escribir los stats del archivo.\n");
+		return -1;
+	}
+	if (fwrite(&archivo->stats->st_mode, sizeof(mode_t), 1, file) != 1 ||
+	    fwrite(&archivo->stats->st_nlink, sizeof(nlink_t), 1, file) != 1 ||
+	    fwrite(&archivo->stats->st_uid, sizeof(uid_t), 1, file) != 1 ||
+	    fwrite(&archivo->stats->st_gid, sizeof(gid_t), 1, file) != 1 ||
+	    fwrite(&archivo->stats->st_size, sizeof(off_t), 1, file) != 1 ||
+	    fwrite(&archivo->stats->st_atime, sizeof(time_t), 1, file) != 1 ||
+	    fwrite(&archivo->stats->st_mtime, sizeof(time_t), 1, file) != 1) {
+		fprintf(stderr,
+		        "[ERROR] Error al escribir los stats del archivo\n");
+		return -1;
+	}
+
+	// Serializa la data del archivo si existe
 	if (archivo->data != NULL && archivo->stats->st_size > 0) {
 		if (fwrite(archivo->data,
 		           sizeof(char),
@@ -531,6 +592,7 @@ serializar_archivo(FILE *file, archivo_t *archivo)
 			return -1;
 		}
 	}
+
 	return 0;
 }
 
@@ -539,40 +601,59 @@ serializar_directorio(FILE *file, directorio_t *dir)
 {
 	if (fwrite(dir->nombre, sizeof(char), MAX_FILE_NAME, file) !=
 	    MAX_FILE_NAME) {
-		fprintf(stderr, "[ERROR] Error al escribir el nombre del directorio.\n");
+		fprintf(stderr,
+		        "[ERROR] Error al escribir el nombre del directorio\n");
+		return -1;
+	}
+	if (fwrite(&dir->idx, sizeof(int), 1, file) != 1) {
+		fprintf(stderr,
+		        "[ERROR] Error al escribir el index del directorio.\n");
 		return -1;
 	}
 	if (fwrite(&dir->cant_archivos, sizeof(size_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al escribir la cantidad de archivos del directorio.\n");
+		fprintf(stderr, "[ERROR] Error al escribir la cantidad de archivos del directorio\n");
 		return -1;
 	}
 	if (fwrite(&dir->cant_directorios, sizeof(size_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al escribir la cantidad de subdirectorios del directorio.\n");
-		return -1;
-	}
-	if (fwrite(&dir->stats->st_atime, sizeof(time_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al escribir la fecha de acceso del directorio.\n");
-		return -1;
-	}
-	if (fwrite(&dir->stats->st_mtime, sizeof(time_t), 1, file) != 1) {
-		fprintf(stderr, "[ERROR] Error al escribir la fecha de modificacion del directorio.\n");
+		fprintf(stderr, "[ERROR] Error al escribir la cantidad de subdirectorios del directorio\n");
 		return -1;
 	}
 
+	// Serializa los stats del directorio
+	if (fwrite(dir->stats, sizeof(stats_t), 1, file) != 1) {
+		fprintf(stderr,
+		        "[ERROR] Error al escribir los stats del directorio\n");
+		return -1;
+	}
+	if (fwrite(&dir->stats->st_mode, sizeof(mode_t), 1, file) != 1 ||
+	    fwrite(&dir->stats->st_nlink, sizeof(nlink_t), 1, file) != 1 ||
+	    fwrite(&dir->stats->st_uid, sizeof(uid_t), 1, file) != 1 ||
+	    fwrite(&dir->stats->st_gid, sizeof(gid_t), 1, file) != 1 ||
+	    fwrite(&dir->stats->st_size, sizeof(off_t), 1, file) != 1 ||
+	    fwrite(&dir->stats->st_atime, sizeof(time_t), 1, file) != 1 ||
+	    fwrite(&dir->stats->st_mtime, sizeof(time_t), 1, file) != 1) {
+		fprintf(stderr,
+		        "[ERROR] Error al escribir los stats del directorio\n");
+		return -1;
+	}
+
+	// Serialización de archivos
 	for (size_t i = 0; i < dir->cant_archivos; i++) {
 		if (serializar_archivo(file, dir->archivos[i]) != 0) {
-			fprintf(stderr, "[ERROR] Error al escribir un archivo del directorio.\n");
+			fprintf(stderr, "[ERROR] Error al escribir un archivo del directorio\n");
 			return -1;
 		}
 	}
+	// Serialización de subdirectorios
 	for (size_t i = 0; i < dir->cant_directorios; i++) {
 		if (serializar_directorio(file, dir->subdirectorios[i]) != 0) {
-			fprintf(stderr, "[ERROR] Error al escribir un subdirectorio del directorio.\n");
+			fprintf(stderr, "[ERROR] Error al escribir un subdirectorio del directorio\n");
 			return -1;
 		}
 	}
 	return 0;
 }
+
 
 int
 guardar_fs(filesystem_t *fs, const char *path)
@@ -624,7 +705,7 @@ fs_destroy(filesystem_t *fs, const char *filename)
 }
 
 archivo_t *
-iter_dir(directorio_t *dir, int size, const char *path)
+iter_dir(directorio_t *dir, const char *path)
 {
 	for (int i = 0; i < dir->cant_archivos; i++) {
 		if (strcmp(dir->archivos[i]->nombre, path) == 0) {
@@ -637,7 +718,7 @@ iter_dir(directorio_t *dir, int size, const char *path)
 archivo_t *
 search_file(directorio_t *dir, const char *path)
 {
-	archivo_t *f = iter_dir(dir, dir->cant_archivos, path);
+	archivo_t *f = iter_dir(dir, path);
 	if (f)
 		return f;
 	for (int i = 0; i < dir->cant_directorios; i++) {
@@ -662,12 +743,18 @@ fs_open(filesystem_t *fs, const char *path)
 stats_t *
 fs_getattr(filesystem_t *fs, const char *path)
 {
+	if (!fs || !path) {
+		fprintf(stderr,
+		        "[ERROR] Filesystem o path inválidos en fs_getattr.\n");
+		return NULL;
+	}
 	archivo_t *archivo = search_file(fs->raiz, path);
 	if (archivo) {
 		return archivo->stats;
 	}
 	directorio_t *directorio = obtener_directorio(fs->raiz, path);
-	if (directorio)
+	if (directorio) {
 		return directorio->stats;
+	}
 	return NULL;
 }

@@ -48,7 +48,7 @@ typedef struct filesystem {
 	size_t current_size;
 } filesystem_t;
 
-filesystem_t *fs_init();
+filesystem_t *fs_init(const char *filename);
 void fs_destroy(filesystem_t *fs, const char *filename);
 int fs_mkdir(filesystem_t *fs, const char *path);
 int fs_rmdir(filesystem_t *fs, const char *path);
