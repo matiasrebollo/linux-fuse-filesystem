@@ -75,9 +75,9 @@ fisopfs_readdir(const char *path,
 
 	directorio_t *dir = (directorio_t *) fi->fh;
 
-	/*for(int i = 0; i< dir->cant_archivos; i++){
-	        filler(buffer, dir->archivos[i]->nombre, NULL,0);
-	}*/
+	for(int i = 0; i< dir->cant_archivos; i++){
+	        filler(buffer, dir->archivos[i]->nombre + 1, NULL,0);
+	}
 	for (int i = 0; i < dir->cant_directorios; i++) {
 		filler(buffer, dir->subdirectorios[i]->nombre + 1, NULL, 0);
 	}
@@ -158,23 +158,20 @@ fisopfs_write(const char *path,
 	return size;
 }
 
-static int
-fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
-{
-	printf("[debug] fisopfs_create %s ", path);
-	if (fs == NULL) {
-		return -EFAULT;
-	}
+static int fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
+    if (fs == NULL) {
+        return -EFAULT; 
+    }
 
-	archivo_t *f = crear_archivo(fs, path, mode);
-	if (f == NULL) {
-		return -ENOENT;
-	}
+    int ret = fs_create(fs, path, mode);
+    if (ret < 0) {
+        return ret; 
+    }
 
-	fi->fh = (uint64_t) f;
+	fi->fh = (uint64_t) ret;
 
-	return 0;
-}
+    return 0;
+} 
 
 
 static int
@@ -208,45 +205,39 @@ fisopfs_mkdir(const char *path, mode_t mode)
 	return fs_mkdir(fs, path);
 }
 
-static int
-fisopfs_mknod(const char *path, mode_t mode, dev_t rdev)
-{
-	printf("[debug] fisopfs_mknod %s", path);
-	if (fs == NULL) {
-		return -EFAULT;
-	}
 
-	if (!S_ISREG(mode)) {
-		return -EINVAL;
-	}
+static int fisopfs_mknod(const char *path, mode_t mode, dev_t rdev) {
+    if (fs == NULL) {
+        return -EFAULT; 
+    }
 
-	archivo_t *a = crear_archivo(fs, path, mode);
-	if (!a) {
-		return -ECANCELED;
-	}
+    if (!S_ISREG(mode)) {
+        return -EINVAL; 
+    }
 
-	return 0;
+    int ret = fs_create(fs, path, mode);
+    if (ret < 0) {
+        return ret; 
+    }
+
+    return 0;
 }
 
-static int
-fisopfs_utimens(const char *path, const struct timespec ts[2])
-{
-	archivo_t *archivo = fs_open(fs, path);
-	if (!archivo) {
-		fprintf(stderr, "[ERROR] No se encontró el archivo para actualizar tiempos: %s\n", path);
-		return -ENOENT;
-	}
-
-	if (ts) {
-		archivo->stats->st_atime = ts[0].tv_sec;
-		archivo->stats->st_mtime = ts[1].tv_sec;
-	} else {
-		time_t now = time(NULL);
-		archivo->stats->st_atime = now;
-		archivo->stats->st_mtime = now;
-	}
-
-	return 0;
+static int fisopfs_utimens(const char *path, const struct timespec ts[2]) {
+    archivo_t *archivo = fs_open(fs, path);
+    if (!archivo) {
+        fprintf(stderr, "[ERROR] No se encontró el archivo para actualizar tiempos: %s\n", path);
+        return -ENOENT; 
+    }
+    if (ts) {
+        archivo->stats->st_atime = ts[0].tv_sec; 
+        archivo->stats->st_mtime = ts[1].tv_sec; 
+    } else {
+        time_t now = time(NULL);
+        archivo->stats->st_atime = now;
+        archivo->stats->st_mtime = now;
+    }
+    return 0; 
 }
 
 
