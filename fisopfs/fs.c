@@ -12,22 +12,6 @@
 
 // PUEDE FALTAR MODULARIZAR LOS DEBUGS.
 
-<<<<<<< HEAD
-char *strdup(const char *src) {
-    if (!src) {
-        return NULL;
-    }
-    size_t len = strlen(src) + 1;  // Incluye el terminador nulo
-    char *dest = malloc(len);
-    if (!dest) {
-        return NULL;
-    }
-    memcpy(dest, src, len);
-    return dest;
-}
-
-
-=======
 
 char *
 strdup(const char *src)
@@ -44,7 +28,6 @@ strdup(const char *src)
 	return dest;
 }
 
->>>>>>> 75a267053a856737640a184174a2635b409d57eb
 void
 liberar_archivos(archivo_t **archivos, size_t cant_archivos)
 {
@@ -289,85 +272,6 @@ cargar_fs(const char *path)
 	return fs;
 }
 
-<<<<<<< HEAD
-char *dirname(char *path) {
-    if (!path || strlen(path) == 0) {
-        return ".";
-    }
-
-    // Hacer una copia del path para trabajar sobre ella
-    char *copy = strdup(path);
-    if (!copy) {
-        return NULL;
-    }
-
-    // Encontrar el último separador '/'
-    char *last_slash = strrchr(copy, '/');
-    if (!last_slash) {
-        free(copy);
-        return ".";  // No hay '/' en el path, el directorio es "."
-    }
-
-    // Si el '/' está al inicio, es la raíz "/"
-    if (last_slash == copy) {
-        *(last_slash + 1) = '\0';  // Mantener el '/' final
-        return copy;
-    }
-
-    // Eliminar el '/' final para obtener el directorio
-    *last_slash = '\0';
-    return copy;
-}
-
-char *basename(char *path) {
-    if (!path || strlen(path) == 0) {
-        return ".";
-    }
-
-    // Encontrar el último separador '/'
-    char *last_slash = strrchr(path, '/');
-    if (!last_slash) {
-        return path;  // No hay '/' en el path, todo es el nombre del archivo
-    }
-
-    return last_slash + 1;  // Retornar lo que viene después del último '/'
-}
-
-
-archivo_t *
-crear_archivo(const char *nombre, int idx, mode_t mode)
-{
- archivo_t *file = malloc(sizeof(archivo_t));
-    if (!file) {
-        fprintf(stderr,
-                "[ERROR] Error al asignar memoria para archivo.\n");
-        return NULL;
-    }
-
-    // Configurar los campos básicos del archivo
-    snprintf(file->nombre, MAX_FILE_NAME, "%s", nombre);
-    file->idx = idx;
-    file->data = NULL;
-
-    // Inicializar estadísticas del archivo
-    file->stats = malloc(sizeof(stats_t));
-    if (!file->stats) {
-        fprintf(stderr,
-                "[ERROR] Error al asignar memoria para estadísticas.\n");
-        free(file);
-        return NULL;
-    }
-
-    file->stats->st_mode = mode;           // Tipo y permisos del archivo
-    file->stats->st_nlink = 1;             // Número de enlaces
-    file->stats->st_uid = getuid();        // UID del usuario actual
-    file->stats->st_gid = getgid();        // GID del usuario actual
-    file->stats->st_size = 0;              // Tamaño inicial
-    file->stats->st_atime = time(NULL);    // Último acceso
-    file->stats->st_mtime = time(NULL);    // Última modificación
-
-    return file;
-=======
 char *
 dirname(char *path)
 {
@@ -438,46 +342,11 @@ crear_archivo(const char *nombre, int idx, mode_t mode)
 	file->stats->st_atime = time(NULL);  // Último acceso
 	file->stats->st_mtime = time(NULL);  // Última modificación
 	return file;
->>>>>>> 75a267053a856737640a184174a2635b409d57eb
 }
 
 int
 fs_create(filesystem_t *fs, const char *path, mode_t mode)
 {
-<<<<<<< HEAD
-    if (!fs || !path || strlen(path) == 0 || strlen(path) >= MAX_PATH) {
-        fprintf(stderr, "[ERROR] Path inválido o sistema no inicializado.\n");
-        return -1;
-    }
-
-    // Verificar si ya existe un archivo con el mismo nombre en la raíz
-    for (size_t i = 0; i < fs->raiz->cant_archivos; i++) {
-        if (strcmp(fs->raiz->archivos[i]->nombre, path) == 0) {
-            fprintf(stderr,
-                    "[ERROR] Ya existe un archivo con este nombre en este directorio.\n");
-            return -1;
-        }
-    }
-
-    // Crear el archivo
-    archivo_t *nuevo_archivo =
-        crear_archivo(path, fs->raiz->cant_archivos, mode);
-    if (!nuevo_archivo) {
-        fprintf(stderr, "[ERROR] Error al crear el archivo.\n");
-        return -1;
-    }
-
-   // Agregar el archivo al directorio raíz
-    fs->raiz->archivos[fs->raiz->cant_archivos] = nuevo_archivo;
-    fs->raiz->cant_archivos++;
-    fs->raiz->stats->st_atime = time(NULL);
-    fs->raiz->stats->st_mtime = time(NULL);
-
-    // Incrementar el tamaño actual del filesystem
-    fs->current_size++;
-
-    return 0;
-=======
 	if (!fs || !path || strlen(path) == 0 || strlen(path) >= MAX_PATH) {
 		fprintf(stderr,
 		        "[ERROR] Path inválido o sistema no inicializado.\n");
@@ -505,7 +374,6 @@ fs_create(filesystem_t *fs, const char *path, mode_t mode)
 	// Incrementar el tamaño actual del filesystem
 	fs->current_size++;
 	return 0;
->>>>>>> 75a267053a856737640a184174a2635b409d57eb
 }
 
 directorio_t *
@@ -644,9 +512,6 @@ fs_getdir(filesystem_t *fs, const char *path)
 {
 	return obtener_directorio(fs->raiz, path);
 }
-
-
-
 
 int
 fs_rmdir(filesystem_t *fs, const char *path)
