@@ -12,6 +12,7 @@
 
 // PUEDE FALTAR MODULARIZAR LOS DEBUGS.
 
+<<<<<<< HEAD
 char *strdup(const char *src) {
     if (!src) {
         return NULL;
@@ -26,6 +27,24 @@ char *strdup(const char *src) {
 }
 
 
+=======
+
+char *
+strdup(const char *src)
+{
+	if (!src) {
+		return NULL;
+	}
+	size_t len = strlen(src) + 1;  // Incluye el terminador nulo
+	char *dest = malloc(len);
+	if (!dest) {
+		return NULL;
+	}
+	memcpy(dest, src, len);
+	return dest;
+}
+
+>>>>>>> 75a267053a856737640a184174a2635b409d57eb
 void
 liberar_archivos(archivo_t **archivos, size_t cant_archivos)
 {
@@ -227,6 +246,7 @@ cargar_fs(const char *path)
 	return fs;
 }
 
+<<<<<<< HEAD
 char *dirname(char *path) {
     if (!path || strlen(path) == 0) {
         return ".";
@@ -304,11 +324,84 @@ crear_archivo(const char *nombre, int idx, mode_t mode)
     file->stats->st_mtime = time(NULL);    // Última modificación
 
     return file;
+=======
+char *
+dirname(char *path)
+{
+	if (!path || strlen(path) == 0) {
+		return ".";
+	}
+	// Hacer una copia del path para trabajar sobre ella
+	char *copy = strdup(path);
+	if (!copy) {
+		return NULL;
+	}
+	// Encontrar el último separador '/'
+	char *last_slash = strrchr(copy, '/');
+	if (!last_slash) {
+		free(copy);
+		return ".";  // No hay '/' en el path, el directorio es "."
+	}
+	// Si el '/' está al inicio, es la raíz "/"
+	if (last_slash == copy) {
+		*(last_slash + 1) = '\0';  // Mantener el '/' final
+		return copy;
+	}
+	// Eliminar el '/' final para obtener el directorio
+	*last_slash = '\0';
+	return copy;
+}
+
+char *
+basename(char *path)
+{
+	if (!path || strlen(path) == 0) {
+		return ".";
+	}
+
+	// Encontrar el último separador '/'
+	char *last_slash = strrchr(path, '/');
+	if (!last_slash) {
+		return path;  // No hay '/' en el path, todo es el nombre del archivo
+	}
+	return last_slash + 1;  // Retornar lo que viene después del último '/'
+}
+
+archivo_t *
+crear_archivo(const char *nombre, int idx, mode_t mode)
+{
+	archivo_t *file = malloc(sizeof(archivo_t));
+	if (!file) {
+		fprintf(stderr,
+		        "[ERROR] Error al asignar memoria para archivo.\n");
+		return NULL;
+	}
+	// Configurar los campos básicos del archivo
+	snprintf(file->nombre, MAX_FILE_NAME, "%s", nombre);
+	file->idx = idx;
+	file->data = NULL;
+	// Inicializar estadísticas del archivo
+	file->stats = malloc(sizeof(stats_t));
+	if (!file->stats) {
+		fprintf(stderr, "[ERROR] Error al asignar memoria para estadísticas.\n");
+		free(file);
+		return NULL;
+	}
+	file->stats->st_mode = mode;         // Tipo y permisos del archivo
+	file->stats->st_nlink = 1;           // Número de enlaces
+	file->stats->st_uid = getuid();      // UID del usuario actual
+	file->stats->st_gid = getgid();      // GID del usuario actual
+	file->stats->st_size = 0;            // Tamaño inicial
+	file->stats->st_atime = time(NULL);  // Último acceso
+	file->stats->st_mtime = time(NULL);  // Última modificación
+	return file;
+>>>>>>> 75a267053a856737640a184174a2635b409d57eb
 }
 
 int
 fs_create(filesystem_t *fs, const char *path, mode_t mode)
 {
+<<<<<<< HEAD
     if (!fs || !path || strlen(path) == 0 || strlen(path) >= MAX_PATH) {
         fprintf(stderr, "[ERROR] Path inválido o sistema no inicializado.\n");
         return -1;
@@ -341,10 +434,39 @@ fs_create(filesystem_t *fs, const char *path, mode_t mode)
     fs->current_size++;
 
     return 0;
+=======
+	if (!fs || !path || strlen(path) == 0 || strlen(path) >= MAX_PATH) {
+		fprintf(stderr,
+		        "[ERROR] Path inválido o sistema no inicializado.\n");
+		return -1;
+	}
+	// Verificar si ya existe un archivo con el mismo nombre en la raíz
+	for (size_t i = 0; i < fs->raiz->cant_archivos; i++) {
+		if (strcmp(fs->raiz->archivos[i]->nombre, path) == 0) {
+			fprintf(stderr, "[ERROR] Ya existe un archivo con este nombre en este directorio.\n");
+			return -1;
+		}
+	}
+	// Crear el archivo
+	archivo_t *nuevo_archivo =
+	        crear_archivo(path, fs->raiz->cant_archivos, mode);
+	if (!nuevo_archivo) {
+		fprintf(stderr, "[ERROR] Error al crear el archivo.\n");
+		return -1;
+	}
+	// Agregar el archivo al directorio raíz
+	fs->raiz->archivos[fs->raiz->cant_archivos] = nuevo_archivo;
+	fs->raiz->cant_archivos++;
+	fs->raiz->stats->st_atime = time(NULL);
+	fs->raiz->stats->st_mtime = time(NULL);
+	// Incrementar el tamaño actual del filesystem
+	fs->current_size++;
+	return 0;
+>>>>>>> 75a267053a856737640a184174a2635b409d57eb
 }
 
 directorio_t *
-crear_directorio(const char *nombre, int idx)
+crear_directorio(const char *path, int idx)
 {
 	directorio_t *dir = malloc(sizeof(directorio_t));
 	if (!dir) {
@@ -352,8 +474,7 @@ crear_directorio(const char *nombre, int idx)
 		        "[ERROR] Error al asignar memoria para directorio.\n");
 		return NULL;
 	}
-	// strncpy(dir->nombre, nombre, MAX_FILE_NAME);
-	snprintf(dir->nombre, MAX_FILE_NAME, "%s", nombre);
+	snprintf(dir->nombre, MAX_FILE_NAME, "%s", path);
 	dir->idx = idx;
 	dir->cant_archivos = 0;
 	dir->cant_directorios = 0;
@@ -410,34 +531,6 @@ fs_init(const char *filename)
 	return fs;
 }
 
-
-int
-fs_mkdir(filesystem_t *fs, const char *path)
-{
-	for (size_t i = 0; i < fs->raiz->cant_directorios; i++) {
-		if (strcmp(fs->raiz->subdirectorios[i]->nombre, path) == 0) {
-			fprintf(stderr,
-			        "[ERROR] Ya existe un subdirectorio con este "
-			        "nombre en este directorio\n");
-			return -1;
-		}
-	}
-
-	directorio_t *nuevo_dir =
-	        crear_directorio(path, fs->raiz->cant_directorios);
-	if (!nuevo_dir) {
-		fprintf(stderr, "[ERROR] Error al crear el directorio\n");
-		return -1;
-	}
-
-	fs->raiz->subdirectorios[fs->raiz->cant_directorios] = nuevo_dir;
-	fs->raiz->cant_directorios++;
-	fs->raiz->stats->st_atime = time(NULL);
-	fs->raiz->stats->st_mtime = time(NULL);
-
-	return 0;
-}
-
 directorio_t *
 obtener_directorio(directorio_t *dir, const char *path)
 {
@@ -459,6 +552,43 @@ obtener_directorio(directorio_t *dir, const char *path)
 	return NULL;
 }
 
+int
+fs_mkdir(filesystem_t *fs, const char *path)
+{
+	// Valida que el path sea directo desde la raíz y con único nivel de recursión
+	if (path[0] == '/' && strchr(path + 1, '/')) {
+		fprintf(stderr,
+		        "[ERROR] mkdir solo permitido en el directorio raíz\n");
+		return -1;
+	}
+
+	if (fs->raiz->cant_directorios >= MAX_FILES) {
+		fprintf(stderr, "[ERROR] Se alcanzó el máximo de subdirectorios permitidos\n");
+		return -1;
+	}
+
+	directorio_t *dir = obtener_directorio(fs->raiz, path);
+	if (dir) {
+		fprintf(stderr,
+		        "[ERROR] Ya existe un subdirectorio con este nombre\n");
+		return -1;
+	}
+
+	directorio_t *nuevo_dir =
+	        crear_directorio(path, fs->raiz->cant_directorios);
+	if (!nuevo_dir) {
+		fprintf(stderr, "[ERROR] Error al crear el directorio\n");
+		return -1;
+	}
+
+	fs->raiz->subdirectorios[fs->raiz->cant_directorios] = nuevo_dir;
+	fs->raiz->cant_directorios++;
+	fs->raiz->stats->st_atime = time(NULL);
+	fs->raiz->stats->st_mtime = time(NULL);
+
+	return 0;
+}
+
 directorio_t *
 fs_getdir(filesystem_t *fs, const char *path)
 {
@@ -471,27 +601,38 @@ fs_getdir(filesystem_t *fs, const char *path)
 int
 fs_rmdir(filesystem_t *fs, const char *path)
 {
+	if (strcmp(path, "/") == 0) {
+		fprintf(stderr, "[ERROR] No está permitido eliminar el directorio raíz\n");
+		return -1;
+	}
+
 	directorio_t *dir = obtener_directorio(fs->raiz, path);
 	if (!dir) {
+		fprintf(stderr, "[ERROR] Directorio no encontrado: %s\n", path);
 		return -1;
 	}
 
 	if (dir->cant_archivos > 0 || dir->cant_directorios > 0) {
-		fprintf(stderr, "[ERROR] El directorio no está vacío\n");
+		fprintf(stderr, "[ERROR] El directorio no está vacío: %s\n", path);
 		return -1;
 	}
 
+	// Actualiza el índice de los directorios
 	int idx = dir->idx;
 	fs->raiz->subdirectorios[idx] =
 	        fs->raiz->subdirectorios[fs->raiz->cant_directorios - 1];
+	if (fs->raiz->subdirectorios[idx]) {
+		fs->raiz->subdirectorios[idx]->idx = idx;
+	}
 	fs->raiz->subdirectorios[fs->raiz->cant_directorios - 1] = NULL;
 	fs->raiz->cant_directorios--;
 
 	liberar_directorio(dir);
+	fs->raiz->stats->st_atime = time(NULL);
+	fs->raiz->stats->st_mtime = time(NULL);
 
 	return 0;
 }
-
 
 int
 serializar_archivo(FILE *file, archivo_t *archivo)
