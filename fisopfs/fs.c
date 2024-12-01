@@ -37,7 +37,6 @@ liberar_archivos(archivo_t **archivos, size_t cant_archivos)
 	for (size_t i = 0; i < cant_archivos; i++) {
 		if (archivos[i]) {
 			free(archivos[i]->data);
-			free(archivos[i]->data);
 			free(archivos[i]);
 		}
 	}
@@ -373,6 +372,7 @@ int fs_create(filesystem_t *fs, const char *path, mode_t mode) {
             strncpy(dir_path, path, dir_len);
             dir_path[dir_len] = '\0';  // Asegurar terminación
             strcpy(file_name, slash_pos + 1);
+
         }
     } else {
         // Caso: archivo directamente en la raíz (path = "archivo.txt")
@@ -382,6 +382,7 @@ int fs_create(filesystem_t *fs, const char *path, mode_t mode) {
 
     // Obtener el subdirectorio o la raíz donde crear el archivo
     directorio_t *target_dir = fs_getdir(fs, dir_path);
+	printf("Nombre de subdirectorio conseguido: %s", dir_path);
     if (!target_dir) {
         fprintf(stderr, "[ERROR] Subdirectorio no encontrado: %s\n", dir_path);
         return -1;
@@ -744,6 +745,7 @@ archivo_t *
 iter_dir(directorio_t *dir, const char *path)
 {
 	for (int i = 0; i < dir->cant_archivos; i++) {
+		printf("path iter %s\n", dir->archivos[i]->nombre);
 		if (strcmp(dir->archivos[i]->nombre, path) == 0) {
 			return dir->archivos[i];
 		}
@@ -754,7 +756,39 @@ iter_dir(directorio_t *dir, const char *path)
 archivo_t *
 search_file(directorio_t *dir, const char *path)
 {
-	archivo_t *f = iter_dir(dir, path);
+	printf("buscando archivo con path %s\n", path);
+	char dir_path[MAX_PATH];
+    char file_name[MAX_FILE_NAME];
+    const char *slash_pos = strrchr(path, '/');
+
+    if (slash_pos) {
+        if (slash_pos == path) {
+            // Caso: archivo en la raíz (path = "/archivo.txt")
+            strcpy(dir_path, "/");
+            if (*(slash_pos + 1) == '\0') {
+                fprintf(stderr, "[ERROR] Path inválido: falta el nombre del archivo.\n");
+                return NULL;
+            }
+            strcpy(file_name, slash_pos);
+        } else {
+            // Caso: subdirectorio especificado (path = "/subdir/archivo.txt")
+            size_t dir_len = slash_pos - path;
+            if (dir_len >= MAX_PATH || strlen(slash_pos + 1) >= MAX_FILE_NAME) {
+                fprintf(stderr, "[ERROR] Path o nombre de archivo demasiado largo.\n");
+                return NULL;
+            }
+            strncpy(dir_path, path, dir_len);
+            dir_path[dir_len] = '\0';  // Asegurar terminación
+            strcpy(file_name, slash_pos + 1);
+
+        }
+    } else {
+        // Caso: archivo directamente en la raíz (path = "archivo.txt")
+        strcpy(dir_path, "/");
+        strcpy(file_name, path);
+    }
+
+	archivo_t *f = iter_dir(dir, file_name);
 	if (f)
 		return f;
 	for (int i = 0; i < dir->cant_directorios; i++) {
