@@ -75,12 +75,23 @@ fisopfs_readdir(const char *path,
 
 	directorio_t *dir = (directorio_t *) fi->fh;
 
-	for (int i = 0; i < dir->cant_archivos; i++) {
-		filler(buffer, dir->archivos[i]->nombre + 1, NULL, 0);
-	}
-	for (int i = 0; i < dir->cant_directorios; i++) {
-		filler(buffer, dir->subdirectorios[i]->nombre + 1, NULL, 0);
-	}
+    if (strcmp(path, "/") == 0) {
+        // Si estamos en la raíz, usar +1
+        for (int i = 0; i < dir->cant_archivos; i++) {
+            filler(buffer, dir->archivos[i]->nombre + 1, NULL, 0);
+        }
+        for (int i = 0; i < dir->cant_directorios; i++) {
+            filler(buffer, dir->subdirectorios[i]->nombre + 1, NULL, 0);
+        }
+    } else {
+        // Si estamos en un subdirectorio, usar el nombre completo
+        for (int i = 0; i < dir->cant_archivos; i++) {
+            filler(buffer, dir->archivos[i]->nombre, NULL, 0);
+        }
+        for (int i = 0; i < dir->cant_directorios; i++) {
+            filler(buffer, dir->subdirectorios[i]->nombre, NULL, 0);
+        }
+    }
 
 	return 0;
 }
