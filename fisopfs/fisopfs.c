@@ -20,7 +20,7 @@ void *
 fisopfs_init(struct fuse_conn_info *conn)
 {
 	printf("[DEBUG] Inicializando filesystem.\n");
-	filesystem_t *fs_ = fs_init();
+	filesystem_t *fs_ = fs_init(filedisk);
 	if (!fs_) {
 		fprintf(stderr, "[ERROR] No se pudo inicializar el filesystem.\n");
 		return NULL;
