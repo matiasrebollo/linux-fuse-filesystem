@@ -41,13 +41,13 @@ else
     exit 1
 fi
 
-#touch "$MOUNT_POINT/$TEST_DIR_1/testfile.txt"
-#if [ -f "$MOUNT_POINT/$TEST_DIR_1/testfile.txt" ]; then
-#    echo "✔️  El archivo testfile.txt fue creado correctamente en $TEST_DIR_1."
-#else
-#    echo "❌  ERROR: No se pudo crear testfile.txt en $TEST_DIR_1."
-#    exit 1
-#fi
+touch "$MOUNT_POINT/$TEST_DIR_1/testfile.txt"
+if [ -f "$MOUNT_POINT/$TEST_DIR_1/testfile.txt" ]; then
+    echo "✔️  El archivo testfile.txt fue creado correctamente en $TEST_DIR_1."
+else
+    echo "❌  ERROR: No se pudo crear testfile.txt en $TEST_DIR_1."
+    exit 1
+fi
 
 
 # Limpieza (opcional)
