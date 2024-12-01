@@ -216,76 +216,73 @@ cargar_fs(const char *path)
 archivo_t *
 crear_archivo(const char *nombre, int idx, mode_t mode)
 {
-    archivo_t *file = malloc(sizeof(archivo_t));
-    if (!file) {
-        fprintf(stderr,
-                "[ERROR] Error al asignar memoria para archivo.\n");
-        return NULL;
-    }
+	archivo_t *file = malloc(sizeof(archivo_t));
+	if (!file) {
+		fprintf(stderr,
+		        "[ERROR] Error al asignar memoria para archivo.\n");
+		return NULL;
+	}
 
-    // Configurar los campos básicos del archivo
-    snprintf(file->nombre, MAX_FILE_NAME, "%s", nombre);
-    file->idx = idx;
-    file->data = NULL;
+	// Configurar los campos básicos del archivo
+	snprintf(file->nombre, MAX_FILE_NAME, "%s", nombre);
+	file->idx = idx;
+	file->data = NULL;
 
-    // Inicializar estadísticas del archivo
-    file->stats = malloc(sizeof(stats_t));
-    if (!file->stats) {
-        fprintf(stderr,
-                "[ERROR] Error al asignar memoria para estadísticas.\n");
-        free(file);
-        return NULL;
-    }
+	// Inicializar estadísticas del archivo
+	file->stats = malloc(sizeof(stats_t));
+	if (!file->stats) {
+		fprintf(stderr, "[ERROR] Error al asignar memoria para estadísticas.\n");
+		free(file);
+		return NULL;
+	}
 
-    file->stats->st_mode = mode;           // Tipo y permisos del archivo
-    file->stats->st_nlink = 1;             // Número de enlaces
-    file->stats->st_uid = getuid();        // UID del usuario actual
-    file->stats->st_gid = getgid();        // GID del usuario actual
-    file->stats->st_size = 0;              // Tamaño inicial
-    file->stats->st_atime = time(NULL);    // Último acceso
-    file->stats->st_mtime = time(NULL);    // Última modificación
+	file->stats->st_mode = mode;         // Tipo y permisos del archivo
+	file->stats->st_nlink = 1;           // Número de enlaces
+	file->stats->st_uid = getuid();      // UID del usuario actual
+	file->stats->st_gid = getgid();      // GID del usuario actual
+	file->stats->st_size = 0;            // Tamaño inicial
+	file->stats->st_atime = time(NULL);  // Último acceso
+	file->stats->st_mtime = time(NULL);  // Última modificación
 
-    return file;
+	return file;
 }
 
 int
 fs_create(filesystem_t *fs, const char *path, mode_t mode)
 {
-    if (!fs || !path || strlen(path) == 0 || strlen(path) >= MAX_PATH) {
-        fprintf(stderr, "[ERROR] Path inválido o sistema no inicializado.\n");
-        return -1;
-    }
+	if (!fs || !path || strlen(path) == 0 || strlen(path) >= MAX_PATH) {
+		fprintf(stderr,
+		        "[ERROR] Path inválido o sistema no inicializado.\n");
+		return -1;
+	}
 
-    // Verificar si ya existe un archivo con el mismo nombre en la raíz
-    for (size_t i = 0; i < fs->raiz->cant_archivos; i++) {
-        if (strcmp(fs->raiz->archivos[i]->nombre, path) == 0) {
-            fprintf(stderr,
-                    "[ERROR] Ya existe un archivo con este nombre en este directorio.\n");
-            return -1;
-        }
-    }
+	// Verificar si ya existe un archivo con el mismo nombre en la raíz
+	for (size_t i = 0; i < fs->raiz->cant_archivos; i++) {
+		if (strcmp(fs->raiz->archivos[i]->nombre, path) == 0) {
+			fprintf(stderr, "[ERROR] Ya existe un archivo con este nombre en este directorio.\n");
+			return -1;
+		}
+	}
 
-    // Crear el archivo
-    archivo_t *nuevo_archivo =
-        crear_archivo(path, fs->raiz->cant_archivos, mode);
-    if (!nuevo_archivo) {
-        fprintf(stderr, "[ERROR] Error al crear el archivo.\n");
-        return -1;
-    }
+	// Crear el archivo
+	archivo_t *nuevo_archivo =
+	        crear_archivo(path, fs->raiz->cant_archivos, mode);
+	if (!nuevo_archivo) {
+		fprintf(stderr, "[ERROR] Error al crear el archivo.\n");
+		return -1;
+	}
 
-    // Agregar el archivo al directorio raíz
-    fs->raiz->archivos[fs->raiz->cant_archivos] = nuevo_archivo;
-    fs->raiz->cant_archivos++;
-    fs->raiz->stats->st_atime = time(NULL);
-    fs->raiz->stats->st_mtime = time(NULL);
+	// Agregar el archivo al directorio raíz
+	fs->raiz->archivos[fs->raiz->cant_archivos] = nuevo_archivo;
+	fs->raiz->cant_archivos++;
+	fs->raiz->stats->st_atime = time(NULL);
+	fs->raiz->stats->st_mtime = time(NULL);
 
-    // Incrementar el tamaño actual del filesystem
-    fs->current_size++;
+	// Incrementar el tamaño actual del filesystem
+	fs->current_size++;
 
-    return 0;
+	return 0;
 }
-
-
 
 
 directorio_t *
@@ -297,13 +294,14 @@ crear_directorio(const char *nombre, int idx)
 		        "[ERROR] Error al asignar memoria para directorio.\n");
 		return NULL;
 	}
-	strncpy(dir->nombre,nombre, MAX_FILE_NAME);
+	// strncpy(dir->nombre, nombre, MAX_FILE_NAME);
+	snprintf(dir->nombre, MAX_FILE_NAME, "%s", nombre);
 	dir->idx = idx;
 	dir->cant_archivos = 0;
 	dir->cant_directorios = 0;
 	dir->stats = malloc(sizeof(stats_t));
-	dir->stats->st_mtime = time(NULL); //tiempo de modif
-	dir->stats->st_atime = time(NULL); //tiemo de acceso
+	dir->stats->st_mtime = time(NULL);  // tiempo de modif
+	dir->stats->st_atime = time(NULL);  // tiemo de acceso
 	dir->stats->st_gid = getgid();
 	dir->stats->st_nlink = 1;
 	dir->stats->st_mode = __S_IFDIR;
@@ -382,10 +380,30 @@ fs_mkdir(filesystem_t *fs, const char *path)
 	return 0;
 }
 
+directorio_t *
+obtener_directorio(directorio_t *dir, const char *path)
+{
+	if (!dir) {
+		fprintf(stderr, "[ERROR] Error al buscar el directorio\n");
+		return NULL;
+	}
+	if (strcmp(dir->nombre, path) == 0) {
+		return dir;
+	}
+	// Buscar en los directorios de la raíz
+	for (size_t i = 0; i < dir->cant_directorios; i++) {
+		if (strcmp(dir->subdirectorios[i]->nombre, path) == 0) {
+			return dir->subdirectorios[i];
+		}
+	}
 
+	fprintf(stderr, "[ERROR] Directorio %s no encontrado\n", path);
+	return NULL;
+}
 
-
-directorio_t* fs_getdir(filesystem_t *fs, const char *path){
+directorio_t *
+fs_getdir(filesystem_t *fs, const char *path)
+{
 	return obtener_directorio(fs->raiz, path);
 }
 
@@ -438,8 +456,10 @@ serializar_archivo(FILE *file, archivo_t *archivo)
 	}
 
 	if (archivo->data != NULL && archivo->stats->st_size > 0) {
-		if (fwrite(archivo->data, sizeof(char), archivo->stats->st_size, file) !=
-		    archivo->stats->st_size) {
+		if (fwrite(archivo->data,
+		           sizeof(char),
+		           archivo->stats->st_size,
+		           file) != archivo->stats->st_size) {
 			fprintf(stderr, "[ERROR] Error al escribir la data del archivo.\n");
 			return -1;
 		}
@@ -536,44 +556,51 @@ fs_destroy(filesystem_t *fs, const char *filename)
 	printf("[DEBUG] Sistema de archivos destruido y guardado.\n");
 }
 
-archivo_t* iter_dir(directorio_t* dir, int size,const char* path){
-	for(int i = 0; i < dir->cant_archivos; i++){
-		if(strcmp(dir->archivos[i]->nombre, path) == 0){
+archivo_t *
+iter_dir(directorio_t *dir, int size, const char *path)
+{
+	for (int i = 0; i < dir->cant_archivos; i++) {
+		if (strcmp(dir->archivos[i]->nombre, path) == 0) {
 			return dir->archivos[i];
 		}
 	}
 	return NULL;
 }
 
-archivo_t* search_file(directorio_t* dir, const char* path){
-
-	archivo_t* f = iter_dir(dir, dir->cant_archivos, path);
-	if(f)
+archivo_t *
+search_file(directorio_t *dir, const char *path)
+{
+	archivo_t *f = iter_dir(dir, dir->cant_archivos, path);
+	if (f)
 		return f;
-	for(int i = 0; i < dir->cant_directorios; i++){
+	for (int i = 0; i < dir->cant_directorios; i++) {
 		f = search_file(dir->subdirectorios[i], path);
-		if(f)
-			return f;	
+		if (f)
+			return f;
 	}
 	return NULL;
-
 }
-archivo_t* fs_open(filesystem_t* fs, const char* path){
-	if(path == NULL || fs == NULL){
+
+archivo_t *
+fs_open(filesystem_t *fs, const char *path)
+{
+	if (path == NULL || fs == NULL) {
 		printf("[DEBUG] Nombre de archivo nulo.\n");
 		return NULL;
 	}
 
 	return search_file(fs->raiz, path);
-	
 }
-stats_t* fs_getattr(filesystem_t *fs, const char *path){
-	archivo_t* archivo = search_file(fs->raiz,path);
-	if (archivo){
+
+stats_t *
+fs_getattr(filesystem_t *fs, const char *path)
+{
+	archivo_t *archivo = search_file(fs->raiz, path);
+	if (archivo) {
 		return archivo->stats;
 	}
-	directorio_t* directorio = obtener_directorio(fs->raiz, path);
-	if(directorio)
+	directorio_t *directorio = obtener_directorio(fs->raiz, path);
+	if (directorio)
 		return directorio->stats;
 	return NULL;
 }

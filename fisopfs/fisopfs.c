@@ -14,7 +14,7 @@
 #define DEFAULT_FILE_DISK "persistence_file.fisopfs"
 
 char *filedisk = DEFAULT_FILE_DISK;
-filesystem_t* fs;
+filesystem_t *fs;
 
 void *
 fisopfs_init(struct fuse_conn_info *conn)
@@ -46,9 +46,9 @@ fisopfs_getattr(const char *path, struct stat *st)
 	printf("[debug] fisopfs_getattr - path: %s\n", path);
 	stats_t *s = fs_getattr(fs, path);
 
-	if(!s)
+	if (!s)
 		return -ENOENT;
-	
+
 	st->st_atime = s->st_atime;
 	st->st_gid = s->st_gid;
 	st->st_mode = s->st_mode;
@@ -58,7 +58,6 @@ fisopfs_getattr(const char *path, struct stat *st)
 	st->st_mtime = s->st_mtime;
 
 	return 0;
-
 }
 
 static int
@@ -74,171 +73,194 @@ fisopfs_readdir(const char *path,
 	filler(buffer, ".", NULL, 0);
 	filler(buffer, "..", NULL, 0);
 
-	directorio_t* dir = (directorio_t*)fi->fh;
-	
+	directorio_t *dir = (directorio_t *) fi->fh;
+
 	/*for(int i = 0; i< dir->cant_archivos; i++){
-		filler(buffer, dir->archivos[i]->nombre, NULL,0);
+	        filler(buffer, dir->archivos[i]->nombre, NULL,0);
 	}*/
-	for(int i = 0; i< dir->cant_directorios; i++){
-		filler(buffer, dir->subdirectorios[i]->nombre, NULL,0);
+	for (int i = 0; i < dir->cant_directorios; i++) {
+		filler(buffer, dir->subdirectorios[i]->nombre + 1, NULL, 0);
 	}
 
 	return 0;
 }
 
 
-static int fisopfs_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
-    if (!fs) {
-        return -ENOENT;  
-    }
+static int
+fisopfs_read(const char *path,
+             char *buffer,
+             size_t size,
+             off_t offset,
+             struct fuse_file_info *fi)
+{
+	if (!fs) {
+		return -ENOENT;
+	}
 
-    archivo_t *file = fs_open(fs,path);
-    if (!file) {
-        return -ENOENT; 
-    }
+	archivo_t *file = fs_open(fs, path);
+	if (!file) {
+		return -ENOENT;
+	}
 
-	printf("[debug] fisopfs_read - path: %s, offset: %li, size: %lu\n",path,offset,size);
+	printf("[debug] fisopfs_read - path: %s, offset: %li, size: %lu\n",
+	       path,
+	       offset,
+	       size);
 
-    if (offset >= file->stats->st_size) {
-        return 0;
-    }
+	if (offset >= file->stats->st_size) {
+		return 0;
+	}
 
-    size_t bytes_to_read = size;
-    if (offset + size > file->stats->st_size) {
-        bytes_to_read = file->stats->st_size - offset;  
-    }
+	size_t bytes_to_read = size;
+	if (offset + size > file->stats->st_size) {
+		bytes_to_read = file->stats->st_size - offset;
+	}
 
-    memcpy(buffer, (char *)file->data + offset, bytes_to_read);
+	memcpy(buffer, (char *) file->data + offset, bytes_to_read);
 
-    return bytes_to_read;
+	return bytes_to_read;
 }
 
-static int fisopfs_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
-    if (!fs) {
-        return -ENOENT;  
-    }
+static int
+fisopfs_write(const char *path,
+              const char *buffer,
+              size_t size,
+              off_t offset,
+              struct fuse_file_info *fi)
+{
+	if (!fs) {
+		return -ENOENT;
+	}
 
-    archivo_t *file = fs_open(fs, path); 
-    if (!file) {
-        return -ENOENT; 
-    }
+	archivo_t *file = fs_open(fs, path);
+	if (!file) {
+		return -ENOENT;
+	}
 
-    if (offset > file->stats->st_size) {
-        return -EINVAL;  
-    }
+	if (offset > file->stats->st_size) {
+		return -EINVAL;
+	}
 
-    if (offset + size > file->stats->st_size) {
-        size_t new_size = offset + size;
-        file->data = realloc(file->data, new_size);  
-        if (!file->data) {
-            return -ENOMEM; 
-        }
-        file->stats->st_size = new_size; 
-    }
+	if (offset + size > file->stats->st_size) {
+		size_t new_size = offset + size;
+		file->data = realloc(file->data, new_size);
+		if (!file->data) {
+			return -ENOMEM;
+		}
+		file->stats->st_size = new_size;
+	}
 
-    memcpy((char *)file->data + offset, buffer, size);
+	memcpy((char *) file->data + offset, buffer, size);
 
-    file->stats->st_mtime = time(NULL); 
+	file->stats->st_mtime = time(NULL);
 
-    return size;
+	return size;
 }
 
-static int fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
+static int
+fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
 	printf("[debug] fisopfs_create %s ", path);
-    if (fs == NULL) {
-        return -EFAULT; 
-    }
+	if (fs == NULL) {
+		return -EFAULT;
+	}
 
-    archivo_t* f = crear_archivo(fs, path, mode);
-    if (f == NULL) {
-        return -ENOENT; 
-    }
+	archivo_t *f = crear_archivo(fs, path, mode);
+	if (f == NULL) {
+		return -ENOENT;
+	}
 
-	fi->fh = (uint64_t)f;
+	fi->fh = (uint64_t) f;
 
-    return 0;
-} 
+	return 0;
+}
 
 
 static int
-fisopfs_open(const char * path, struct fuse_file_info * fi){
+fisopfs_open(const char *path, struct fuse_file_info *fi)
+{
 	printf("[debug] fisopfs_open %s", path);
-	archivo_t* f = fs_open(fs, path);
-	if(f){
+	archivo_t *f = fs_open(fs, path);
+	if (f) {
 		fi->fh = (uint64_t) f;
 		return 0;
 	}
 	return -ENOENT;
 }
 
-static int fisopfs_opendir(const char* path, struct fuse_file_info * fi){
+static int
+fisopfs_opendir(const char *path, struct fuse_file_info *fi)
+{
 	printf("[debug] fisopfs_opendir %s", path);
-	directorio_t* d = fs_getdir(fs, path);
-	if(d){
+	directorio_t *d = fs_getdir(fs, path);
+	if (d) {
 		fi->fh = (uint64_t) d;
 		return 0;
 	}
 	return -ENOENT;
 }
 
-static int fisopfs_mkdir(const char* path, mode_t mode){
+static int
+fisopfs_mkdir(const char *path, mode_t mode)
+{
 	printf("[debug] fisopfs_mkdir %s", path);
 	return fs_mkdir(fs, path);
 }
 
-static int fisopfs_mknod(const char *path, mode_t mode, dev_t rdev) {
+static int
+fisopfs_mknod(const char *path, mode_t mode, dev_t rdev)
+{
 	printf("[debug] fisopfs_mknod %s", path);
-    if (fs == NULL) {
-        return -EFAULT; 
-    }
+	if (fs == NULL) {
+		return -EFAULT;
+	}
 
-    if (!S_ISREG(mode)) {
-        return -EINVAL; 
-    }
+	if (!S_ISREG(mode)) {
+		return -EINVAL;
+	}
 
-    archivo_t* a = crear_archivo(fs, path, mode);
-    if (!a ) {
-        return -ECANCELED; 
-    }
+	archivo_t *a = crear_archivo(fs, path, mode);
+	if (!a) {
+		return -ECANCELED;
+	}
 
-    return 0;
+	return 0;
 }
 
-static int fisopfs_utimens(const char *path, const struct timespec ts[2]) {
-    archivo_t *archivo = fs_open(fs, path);
-    if (!archivo) {
-        fprintf(stderr, "[ERROR] No se encontró el archivo para actualizar tiempos: %s\n", path);
-        return -ENOENT; 
-    }
+static int
+fisopfs_utimens(const char *path, const struct timespec ts[2])
+{
+	archivo_t *archivo = fs_open(fs, path);
+	if (!archivo) {
+		fprintf(stderr, "[ERROR] No se encontró el archivo para actualizar tiempos: %s\n", path);
+		return -ENOENT;
+	}
 
-    if (ts) {
-        archivo->stats->st_atime = ts[0].tv_sec; 
-        archivo->stats->st_mtime = ts[1].tv_sec; 
-    } else {
-        time_t now = time(NULL);
-        archivo->stats->st_atime = now;
-        archivo->stats->st_mtime = now;
-    }
+	if (ts) {
+		archivo->stats->st_atime = ts[0].tv_sec;
+		archivo->stats->st_mtime = ts[1].tv_sec;
+	} else {
+		time_t now = time(NULL);
+		archivo->stats->st_atime = now;
+		archivo->stats->st_mtime = now;
+	}
 
-    return 0; 
+	return 0;
 }
 
 
-
-static struct fuse_operations operations = {
-	.getattr = fisopfs_getattr,
-	.readdir = fisopfs_readdir,
-	.read = fisopfs_read,
-	.write = fisopfs_write,
-	.init = fisopfs_init,
-	.destroy = fisopfs_destroy,
-	.open = fisopfs_open,
-	.mkdir = fisopfs_mkdir,
-	.opendir = fisopfs_opendir,
-	.create = fisopfs_create,
-	.mknod = fisopfs_mknod,
-	.utimens = fisopfs_utimens
-};
+static struct fuse_operations operations = { .getattr = fisopfs_getattr,
+	                                     .readdir = fisopfs_readdir,
+	                                     .read = fisopfs_read,
+	                                     .write = fisopfs_write,
+	                                     .init = fisopfs_init,
+	                                     .destroy = fisopfs_destroy,
+	                                     .open = fisopfs_open,
+	                                     .mkdir = fisopfs_mkdir,
+	                                     .opendir = fisopfs_opendir,
+	                                     .create = fisopfs_create,
+	                                     .mknod = fisopfs_mknod,
+	                                     .utimens = fisopfs_utimens };
 
 int
 main(int argc, char *argv[])
