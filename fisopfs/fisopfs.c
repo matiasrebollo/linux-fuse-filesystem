@@ -48,7 +48,7 @@ fisopfs_getattr(const char *path, struct stat *st)
 
 	if(!s)
 		return -ENOENT;
-	
+
 	st->st_atime = s->st_atime;
 	st->st_gid = s->st_gid;
 	st->st_mode = s->st_mode;
@@ -79,16 +79,16 @@ fisopfs_readdir(const char *path,
 		return -ENOENT;
 	}
 	for(int i = 0; i< dir->cant_archivos; i++){
-		filler(buffer, dir->archivos[i]->nombre, NULL,0);
+		filler(buffer, dir->archivos[i]->nombre+1, NULL,0);
 	}
 	for(int i = 0; i< dir->cant_directorios; i++){
-		filler(buffer, dir->subdirectorios[i]->nombre, NULL,0);
+		filler(buffer, dir->subdirectorios[i]->nombre+1, NULL,0);
 	}
 
 	return 0;
 }
 
-#define MAX_CONTENIDO 100
+#define MAX_CONTENIDO 100;
 
 static int fisopfs_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
     if (!fs) {
@@ -206,7 +206,6 @@ static int fisopfs_utimens(const char *path, const struct timespec ts[2]) {
         fprintf(stderr, "[ERROR] No se encontró el archivo para actualizar tiempos: %s\n", path);
         return -ENOENT; 
     }
-
     if (ts) {
         archivo->stats->st_atime = ts[0].tv_sec; 
         archivo->stats->st_mtime = ts[1].tv_sec; 
@@ -215,11 +214,8 @@ static int fisopfs_utimens(const char *path, const struct timespec ts[2]) {
         archivo->stats->st_atime = now;
         archivo->stats->st_mtime = now;
     }
-
     return 0; 
 }
-
-
 
 static struct fuse_operations operations = {
 	.getattr = fisopfs_getattr,
