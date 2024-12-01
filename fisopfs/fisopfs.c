@@ -75,9 +75,9 @@ fisopfs_readdir(const char *path,
 
 	directorio_t *dir = (directorio_t *) fi->fh;
 
-	/*for(int i = 0; i< dir->cant_archivos; i++){
-	        filler(buffer, dir->archivos[i]->nombre, NULL,0);
-	}*/
+	for (int i = 0; i < dir->cant_archivos; i++) {
+		filler(buffer, dir->archivos[i]->nombre + 1, NULL, 0);
+	}
 	for (int i = 0; i < dir->cant_directorios; i++) {
 		filler(buffer, dir->subdirectorios[i]->nombre + 1, NULL, 0);
 	}
@@ -85,6 +85,7 @@ fisopfs_readdir(const char *path,
 	return 0;
 }
 
+#define MAX_CONTENIDO 100;
 
 static int
 fisopfs_read(const char *path,
@@ -160,17 +161,16 @@ fisopfs_write(const char *path,
 static int
 fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
-	printf("[debug] fisopfs_create %s ", path);
 	if (fs == NULL) {
 		return -EFAULT;
 	}
 
-	archivo_t *f = crear_archivo(fs, path, mode);
-	if (f == NULL) {
-		return -ENOENT;
+	int ret = fs_create(fs, path, mode);
+	if (ret < 0) {
+		return ret;
 	}
 
-	fi->fh = (uint64_t) f;
+	fi->fh = (uint64_t) ret;
 
 	return 0;
 }
@@ -179,7 +179,7 @@ fisopfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 static int
 fisopfs_open(const char *path, struct fuse_file_info *fi)
 {
-	printf("[debug] fisopfs_open %s", path);
+	printf("[debug] fisopfs_open %s\n", path);
 	archivo_t *f = fs_open(fs, path);
 	if (f) {
 		fi->fh = (uint64_t) f;
@@ -191,7 +191,7 @@ fisopfs_open(const char *path, struct fuse_file_info *fi)
 static int
 fisopfs_opendir(const char *path, struct fuse_file_info *fi)
 {
-	printf("[debug] fisopfs_opendir %s", path);
+	printf("[debug] fisopfs_opendir %s\n", path);
 	directorio_t *d = fs_getdir(fs, path);
 	if (d) {
 		fi->fh = (uint64_t) d;
@@ -203,14 +203,20 @@ fisopfs_opendir(const char *path, struct fuse_file_info *fi)
 static int
 fisopfs_mkdir(const char *path, mode_t mode)
 {
-	printf("[debug] fisopfs_mkdir %s", path);
+	printf("[debug] fisopfs_mkdir %s\n", path);
 	return fs_mkdir(fs, path);
+}
+
+static int
+fisopfs_rmdir(const char *path)
+{
+	printf("[debug] fisopfs_rmdir %s\n", path);
+	return fs_rmdir(fs, path);
 }
 
 static int
 fisopfs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
-	printf("[debug] fisopfs_mknod %s", path);
 	if (fs == NULL) {
 		return -EFAULT;
 	}
@@ -219,9 +225,9 @@ fisopfs_mknod(const char *path, mode_t mode, dev_t rdev)
 		return -EINVAL;
 	}
 
-	archivo_t *a = crear_archivo(fs, path, mode);
-	if (!a) {
-		return -ECANCELED;
+	int ret = fs_create(fs, path, mode);
+	if (ret < 0) {
+		return ret;
 	}
 
 	return 0;
@@ -235,7 +241,6 @@ fisopfs_utimens(const char *path, const struct timespec ts[2])
 		fprintf(stderr, "[ERROR] No se encontró el archivo para actualizar tiempos: %s\n", path);
 		return -ENOENT;
 	}
-
 	if (ts) {
 		archivo->stats->st_atime = ts[0].tv_sec;
 		archivo->stats->st_mtime = ts[1].tv_sec;
@@ -244,7 +249,6 @@ fisopfs_utimens(const char *path, const struct timespec ts[2])
 		archivo->stats->st_atime = now;
 		archivo->stats->st_mtime = now;
 	}
-
 	return 0;
 }
 
@@ -257,6 +261,7 @@ static struct fuse_operations operations = { .getattr = fisopfs_getattr,
 	                                     .destroy = fisopfs_destroy,
 	                                     .open = fisopfs_open,
 	                                     .mkdir = fisopfs_mkdir,
+	                                     .rmdir = fisopfs_rmdir,
 	                                     .opendir = fisopfs_opendir,
 	                                     .create = fisopfs_create,
 	                                     .mknod = fisopfs_mknod,
