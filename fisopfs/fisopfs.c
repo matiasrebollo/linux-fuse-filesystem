@@ -75,23 +75,23 @@ fisopfs_readdir(const char *path,
 
 	directorio_t *dir = (directorio_t *) fi->fh;
 
-    if (strcmp(path, "/") == 0) {
-        // Si estamos en la raíz, usar +1
-        for (int i = 0; i < dir->cant_archivos; i++) {
-            filler(buffer, dir->archivos[i]->nombre + 1, NULL, 0);
-        }
-        for (int i = 0; i < dir->cant_directorios; i++) {
-            filler(buffer, dir->subdirectorios[i]->nombre + 1, NULL, 0);
-        }
-    } else {
-        // Si estamos en un subdirectorio, usar el nombre completo
-        for (int i = 0; i < dir->cant_archivos; i++) {
-            filler(buffer, dir->archivos[i]->nombre, NULL, 0);
-        }
-        for (int i = 0; i < dir->cant_directorios; i++) {
-            filler(buffer, dir->subdirectorios[i]->nombre, NULL, 0);
-        }
-    }
+	if (strcmp(path, "/") == 0) {
+		// Si estamos en la raíz, usar +1
+		for (int i = 0; i < dir->cant_archivos; i++) {
+			filler(buffer, dir->archivos[i]->nombre + 1, NULL, 0);
+		}
+		for (int i = 0; i < dir->cant_directorios; i++) {
+			filler(buffer, dir->subdirectorios[i]->nombre + 1, NULL, 0);
+		}
+	} else {
+		// Si estamos en un subdirectorio, usar el nombre completo
+		for (int i = 0; i < dir->cant_archivos; i++) {
+			filler(buffer, dir->archivos[i]->nombre, NULL, 0);
+		}
+		for (int i = 0; i < dir->cant_directorios; i++) {
+			filler(buffer, dir->subdirectorios[i]->nombre, NULL, 0);
+		}
+	}
 
 	return 0;
 }
@@ -229,6 +229,13 @@ fisopfs_rmdir(const char *path)
 }
 
 static int
+fisopfs_unlink(const char *path)
+{
+	return fs_unlink(fs, path);
+}
+
+
+static int
 fisopfs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
 	if (fs == NULL) {
@@ -266,6 +273,13 @@ fisopfs_utimens(const char *path, const struct timespec ts[2])
 	return 0;
 }
 
+int
+fisopfs_flush(const char *path, struct fuse_file_info *fi)
+{
+	printf("[debug] fisopfs_flush %s\n", path);
+	fisopfs_destroy(NULL);
+	return 0;
+}
 
 static struct fuse_operations operations = { .getattr = fisopfs_getattr,
 	                                     .readdir = fisopfs_readdir,
@@ -279,7 +293,9 @@ static struct fuse_operations operations = { .getattr = fisopfs_getattr,
 	                                     .opendir = fisopfs_opendir,
 	                                     .create = fisopfs_create,
 	                                     .mknod = fisopfs_mknod,
-	                                     .utimens = fisopfs_utimens };
+	                                     .unlink = fisopfs_unlink,
+	                                     .utimens = fisopfs_utimens,
+	                                     .flush = fisopfs_flush };
 
 int
 main(int argc, char *argv[])

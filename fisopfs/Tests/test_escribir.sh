@@ -2,7 +2,7 @@
 
 # Variables
 MOUNT_POINT="./prueba"
-TEST_FILE="writ_test.txt"
+TEST_FILE="write_test.txt"
 INITIAL_CONTENT="Contenido inicial."
 ADDITIONAL_CONTENT="Texto adicional."
 

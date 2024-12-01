@@ -21,7 +21,7 @@ else
 fi
 
 # Limpieza
-#echo "Eliminando archivo '$TEST_FILE'..."
-#rm "$MOUNT_POINT/$TEST_FILE"
+echo "Eliminando archivo '$TEST_FILE'..."
+rm "$MOUNT_POINT/$TEST_FILE"
 
 echo "✔️  Test de cat completado con éxito."
