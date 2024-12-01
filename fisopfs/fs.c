@@ -745,7 +745,7 @@ archivo_t *
 iter_dir(directorio_t *dir, const char *path)
 {
 	for (int i = 0; i < dir->cant_archivos; i++) {
-		printf("path iter %s\n", dir->archivos[i]->nombre);
+		
 		if (strcmp(dir->archivos[i]->nombre, path) == 0) {
 			return dir->archivos[i];
 		}
@@ -756,7 +756,7 @@ iter_dir(directorio_t *dir, const char *path)
 archivo_t *
 search_file(directorio_t *dir, const char *path)
 {
-	printf("buscando archivo con path %s\n", path);
+	
 	char dir_path[MAX_PATH];
     char file_name[MAX_FILE_NAME];
     const char *slash_pos = strrchr(path, '/');
