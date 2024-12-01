@@ -48,7 +48,7 @@ fisopfs_getattr(const char *path, struct stat *st)
 
 	if (!s)
 		return -ENOENT;
-
+	s->st_atime = time(NULL);
 	st->st_atime = s->st_atime;
 	st->st_gid = s->st_gid;
 	st->st_mode = s->st_mode;
@@ -129,6 +129,7 @@ fisopfs_read(const char *path,
 	}
 
 	memcpy(buffer, (char *) file->data + offset, bytes_to_read);
+	file->stats->st_atime = time(NULL);
 
 	return bytes_to_read;
 }
@@ -165,6 +166,7 @@ fisopfs_write(const char *path,
 	memcpy((char *) file->data + offset, buffer, size);
 
 	file->stats->st_mtime = time(NULL);
+	file->stats->st_atime = time(NULL);
 
 	return size;
 }
@@ -193,6 +195,7 @@ fisopfs_open(const char *path, struct fuse_file_info *fi)
 	printf("[debug] fisopfs_open %s\n", path);
 	archivo_t *f = fs_open(fs, path);
 	if (f) {
+		f->stats->st_atime = time(NULL);
 		fi->fh = (uint64_t) f;
 		return 0;
 	}
