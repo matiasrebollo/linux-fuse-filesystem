@@ -565,11 +565,11 @@ serializar_archivo(FILE *file, archivo_t *archivo)
 	}
 
 	// Serializa los campos de stats_t
-	if (fwrite(archivo->stats, sizeof(stats_t), 1, file) != 1) {
-		fprintf(stderr,
-		        "[ERROR] Error al escribir los stats del archivo.\n");
-		return -1;
-	}
+	/*if (fwrite(archivo->stats, sizeof(stats_t), 1, file) != 1) {
+	        fprintf(stderr,
+	                "[ERROR] Error al escribir los stats del archivo.\n");
+	        return -1;
+	}*/
 	if (fwrite(&archivo->stats->st_mode, sizeof(mode_t), 1, file) != 1 ||
 	    fwrite(&archivo->stats->st_nlink, sizeof(nlink_t), 1, file) != 1 ||
 	    fwrite(&archivo->stats->st_uid, sizeof(uid_t), 1, file) != 1 ||
@@ -620,11 +620,11 @@ serializar_directorio(FILE *file, directorio_t *dir)
 	}
 
 	// Serializa los stats del directorio
-	if (fwrite(dir->stats, sizeof(stats_t), 1, file) != 1) {
-		fprintf(stderr,
-		        "[ERROR] Error al escribir los stats del directorio\n");
-		return -1;
-	}
+	/*if (fwrite(dir->stats, sizeof(stats_t), 1, file) != 1) {
+	        fprintf(stderr,
+	                "[ERROR] Error al escribir los stats del directorio\n");
+	        return -1;
+	}*/
 	if (fwrite(&dir->stats->st_mode, sizeof(mode_t), 1, file) != 1 ||
 	    fwrite(&dir->stats->st_nlink, sizeof(nlink_t), 1, file) != 1 ||
 	    fwrite(&dir->stats->st_uid, sizeof(uid_t), 1, file) != 1 ||
