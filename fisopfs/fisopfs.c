@@ -226,6 +226,13 @@ fisopfs_rmdir(const char *path)
 }
 
 static int
+fisopfs_unlink(const char *path)
+{
+	return fs_unlink(fs, path);
+}
+
+
+static int
 fisopfs_mknod(const char *path, mode_t mode, dev_t rdev)
 {
 	if (fs == NULL) {
@@ -276,6 +283,7 @@ static struct fuse_operations operations = { .getattr = fisopfs_getattr,
 	                                     .opendir = fisopfs_opendir,
 	                                     .create = fisopfs_create,
 	                                     .mknod = fisopfs_mknod,
+										 .unlink = fisopfs_unlink,
 	                                     .utimens = fisopfs_utimens };
 
 int

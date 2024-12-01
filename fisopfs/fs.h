@@ -28,10 +28,6 @@ typedef struct archivo {
 	stats_t *stats;
 } archivo_t;
 
-// por ahora lo cree asi. No es un directorio flat porque un directorio puede tener
-// subdirectorios, despues podemos cambiarlo para que sea un UNICO nivel de recursion.
-// se podria agregar un struct subdirectorio para los subdirectorios dentro del
-// directorio raiz, y dejar struct directorio unicamente para el directorio raiz.
 typedef struct directorio {
 	char nombre[MAX_FILE_NAME];
 	int idx;
@@ -56,5 +52,6 @@ archivo_t *fs_open(filesystem_t *fs, const char *path);
 stats_t *fs_getattr(filesystem_t *fs, const char *path);
 directorio_t *fs_getdir(filesystem_t *fs, const char *path);
 int fs_create(filesystem_t *fs, const char *path, mode_t mode);
+int fs_unlink(filesystem_t *fs, const char *path);
 
 #endif
