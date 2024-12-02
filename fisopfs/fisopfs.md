@@ -77,14 +77,14 @@ La función search_file comienza analizando el path recibido. Para ello, utiliza
 - **dir_path**: La parte del path que indica el directorio donde debería estar el archivo.
   - Por ejemplo, si el path es /subdir/archivo.txt, dir_path será /subdir.
   - Si el archivo está directamente en la raíz (/archivo.txt), dir_path será /.
-- **file_name**: El nombre del archivo que se está buscando, extraído de la última parte del path.
+- **file_name**: El nombre del archivo que se está buscando, extraído de la última parte del path. En el anterior ejemplo, file_name sería archivo.txt
 
 Durante el procesamiento del path, se realizan las siguientes validaciones:
 
 - **Path inválido**: Si el path termina con un / pero no incluye un nombre de archivo, se considera inválido.
 - **Longitudes excesivas**: Si el directorio o el nombre del archivo exceden los límites establecidos (MAX_PATH o MAX_FILE_NAME), se reporta un error.
 
-Con el path ya procesado, search_file comienza buscando el archivo en el directorio actual utilizando la función iter_dir. iter_dir recorre todos los archivos en el directorio y compara sus nombres con el path proporcionado. Si encuentra una coincidencia, retorna el archivo.
+Con el path ya procesado, search_file comienza buscando el archivo en el directorio actual utilizando la función iter_dir. iter_dir recorre todos los archivos en el directorio y compara sus nombres con el nombre proporcionado. Si encuentra una coincidencia, retorna el archivo. Si no la encuentra, devuelve un puntero nulo.
 
 ### **Paso 3: Búsqueda recursiva en subdirectorios**
 
