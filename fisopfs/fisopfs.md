@@ -122,3 +122,85 @@ Al iniciar el sistema de archivos, se verifica la existencia del archivo de pers
 
 - **Desmontaje (fs_destroy)**:
 Al finalizar la ejecución, el estado actual del sistema de archivos en memoria se serializa y se escribe de vuelta al archivo en disco. Esto garantiza que los cambios realizados durante la ejecución se conserven para futuras instancias.
+
+- **Pruebas**
+Para ejecutar los test luego de montar en la carpeta prueba se deben ejecutar los siguientes comandos:
+chmod +x correr_test.sh
+./correr_test.sh
+
+- **Salidas de pruebas**
+Creacion de archivo:
+
+```bash
+$ /fisopfs# cd prueba
+$ /fisopfs/prueba# touch testfile.txt
+$ /fisopfs/prueba# ls
+  testfile.txt
+```
+Creacion de directorio:
+
+```bash
+$ /fisopfs# cd prueba
+$ /fisopfs/prueba# mkdir dir
+$ /fisopfs/prueba# ls
+  dir
+```
+
+Stats:
+
+```bash
+
+oot@47c77605a8b5:/fisopfs/prueba# echo "hola" > stat_test.txt
+root@47c77605a8b5:/fisopfs/prueba# stat stat_test.txt
+  File: stat_test.txt
+  Size: 5               Blocks: 8          IO Block: 4096   regular file
+  Device: 803h/2051d      Inode: 928858      Links: 1
+  Access: (0644/-rw-r--r--)  Uid: (    0/    root)   Gid: (    0/    root)
+  Access: 2024-12-02 00:43:04.391312463 +0000
+  Modify: 2024-12-02 00:43:04.391312463 +0000
+  Change: 2024-12-02 00:43:04.391312463 +0000
+  Birth: -
+root@47c77605a8b5:/fisopfs/prueba# sleep 
+root@47c77605a8b5:/fisopfs/prueba# sleep 1
+root@47c77605a8b5:/fisopfs/prueba# touch stat_test.txt
+root@47c77605a8b5:/fisopfs/prueba# stat stat_test.txt
+  File: stat_test.txt
+  Size: 5               Blocks: 8          IO Block: 4096   regular file
+  Device: 803h/2051d      Inode: 928858      Links: 1
+  Access: (0644/-rw-r--r--)  Uid: (    0/    root)   Gid: (    0/    root)
+  Access: 2024-12-02 00:43:39.128322164 +0000
+  Modify: 2024-12-02 00:43:39.128322164 +0000
+  Change: 2024-12-02 00:43:39.128322164 +0000
+  Birth: -
+```
+En este caso vemos que el tiempo de acceso cambia
+
+Lectura de archivo:
+
+```bash
+  root@47c77605a8b5:/fisopfs/prueba# echo "hola" > cat_test.txt
+  root@47c77605a8b5:/fisopfs/prueba# cat cat_test.txt
+  hola
+```
+Escritura de archivo:
+
+```bash
+  root@47c77605a8b5:/fisopfs/prueba# echo "hola" > write_test.txt
+  root@47c77605a8b5:/fisopfs/prueba# echo "extra" >> write_test.txt
+  root@47c77605a8b5:/fisopfs/prueba# cat write_test.txt
+  hola
+  extra
+```
+Lectura de directorios:
+
+```bash
+  root@47c77605a8b5:/fisopfs/prueba# touch root_file.txt
+  root@47c77605a8b5:/fisopfs/prueba# mkdir test_dir
+  root@47c77605a8b5:/fisopfs/prueba# touch test_dir/subdir_file
+  root@47c77605a8b5:/fisopfs/prueba# ls
+  root_file.txt  test_dir
+  root@47c77605a8b5:/fisopfs/prueba# cd test_dir
+  root@47c77605a8b5:/fisopfs/prueba/test_dir# ls
+  subdir_file
+
+```
